@@ -5,8 +5,11 @@ We will do this in <span style="color:#B94700">_Rust_</span>
 
 ## Part 0 : A High-Level Overview
 `Compiler` : Program that translates code from one programming language to another
+
 `Assembler` : Program that translates assembly into `object files`
+
 `Linker` : Combines all object files to make one final `executable` program.
+
 `Preprocessor` : Does preprocess before the compile occurs : Strip comments, execute directives, expand macros, etc.
 
 ```mermaid
