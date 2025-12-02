@@ -34,3 +34,10 @@ graph TD;
     D-->|Assembly|E(Code emission)
     E-->|program.s|F(( ))
 ```
+
+### Lexer
+The lexer reads the source file and produces a list of tokens. 
+
+
+* `Identifier` : [a-zA-Z_]\w+\\b
+* (integer)`Constant` : [0-9]+\\b
