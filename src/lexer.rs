@@ -90,16 +90,6 @@ pub fn tokenizer(input: &str) -> Result<Vec<Token>, String> {
                     .unwrap_or(s.len());
                 let ident_str = &s[..end];
 
-                if end < s.len() {
-                    let tail_head = s[end..].chars().next().unwrap();
-                    if !tail_head.is_whitespace() && !";(){}".contains(tail_head) {
-                        Err(format!(
-                            "Invalid character after identifier/keyword: {}, current keyword : {}",
-                            tail_head, ident_str
-                        ))?;
-                    }
-                }
-
                 match ident_str {
                     "int" => tokens.push(Token::Keyword(KeywordType::Int)),
                     "void" => tokens.push(Token::Keyword(KeywordType::Void)),
