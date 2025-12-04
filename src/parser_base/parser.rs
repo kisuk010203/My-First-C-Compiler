@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::iter::Peekable;
 
 use crate::lexer_base::lexer::Lexer;
 use crate::lexer_base::token::Token;
@@ -7,12 +8,12 @@ use crate::t;
 
 #[derive(Clone)]
 pub struct Parser<'a> {
-    lexer: Lexer<'a>,
+    lexer: Peekable<Lexer<'a>>,
 }
 
 impl<'a> Parser<'a> {
     pub fn new(lexer: Lexer<'a>) -> Self {
-        Self { lexer }
+        Self { lexer: lexer.peekable() }
     }
 
     pub fn parse(mut self) -> Result<Program<'a>, String> {
@@ -53,10 +54,11 @@ impl<'a> Parser<'a> {
         self.expect(t!("int"))?;
         let func_name = self.expect_identifier()?;
         self.expect(t!("("))?;
+        self.expect_optional(t!("void"))?;
         self.expect(t!(")"))?;
         self.expect(t!("{"))?;
-        self.expect(t!("}"))?;
         let body = self.parse_statement()?;
+        self.expect(t!("}"))?;
 
         Ok(FuncDef::Fn(func_name, body))
     }
@@ -77,6 +79,26 @@ impl<'a> Parser<'a> {
             Some(Token::Identifier(name)) => Ok(name),
             Some(token) => Err(format!("Expected identifier, but found {:?}", token)),
             None => Err("Expected identifier, but found end of input".to_string()),
+        }
+    }
+
+    fn expect_optional(&mut self, expected: Token<'static>) -> Result<bool, String> {
+        match self.lexer.peek() {
+            Some(Ok(token)) if *token == expected => {
+                self.lexer.next(); // Consume it
+                Ok(true)
+            }
+            Some(Ok(_)) => {
+                // Token doesn't match, don't consume
+                Ok(false)
+            }
+            Some(Err(_)) => {
+                // Consume and return the error
+                match self.lexer.next().transpose()? {
+                    _ => unreachable!(),
+                }
+            }
+            None => Ok(false), // End of input
         }
     }
 }
