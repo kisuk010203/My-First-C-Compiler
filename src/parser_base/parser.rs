@@ -82,7 +82,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-     fn expect_optional(&mut self, expected: Token<'static>) -> Result<bool, String> {
+    fn expect_optional(&mut self, expected: Token<'static>) -> Result<bool, String> {
         match self.lexer.peek() {
             Some(Ok(token)) if *token == expected => {
                 self.lexer.next(); // Consume it
