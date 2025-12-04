@@ -1,6 +1,9 @@
 use std::borrow::Cow;
 
-#[derive(Debug, Clone, PartialEq)]
+pub const ALL_KEYWORDS: &[KeywordType] =
+    &[KeywordType::Int, KeywordType::Void, KeywordType::Return];
+
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum KeywordType {
     Int,
     Void,

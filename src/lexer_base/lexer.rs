@@ -1,11 +1,13 @@
 use std::sync::LazyLock;
 
-use crate::{lexer_base::token::Token, t};
+use crate::{
+    lexer_base::token::{ALL_KEYWORDS, Token},
+    t,
+};
 use regex::Regex;
 
-static INTEGER_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\A^[0-9]+").unwrap());
-static IDENTIFIER_REGEX: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"\A^[a-zA-Z_]\w*").unwrap());
+static INTEGER_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^[0-9]+").unwrap());
+static IDENTIFIER_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^[a-zA-Z_]\w*").unwrap());
 
 #[derive(Clone)]
 pub struct Lexer<'a> {
@@ -19,7 +21,7 @@ impl<'a> Lexer<'a> {
     }
 
     /// Returns the remaining part of the source string.
-    fn remaining(&self) -> &str {
+    fn remaining(&self) -> &'a str {
         &self.source[self.idx..]
     }
 
@@ -28,14 +30,6 @@ impl<'a> Lexer<'a> {
         if let Some(additional_idx) = self.remaining().find(|c: char| !c.is_ascii_whitespace()) {
             self.idx += additional_idx;
         }
-    }
-
-    /// Returns the next chunk of the source string.
-    /// If empty or remaining characters are all whitespace, returns None.
-    fn next_non_whitespace_chunk(&self) -> Option<&'a str> {
-        self.remaining()
-            .find(|c: char| !c.is_ascii_whitespace())
-            .map(|idx| &self.source[self.idx..self.idx + idx])
     }
 
     fn next_symbolic_token(&self) -> Option<Token<'a>> {
@@ -56,27 +50,58 @@ impl<'a> Iterator for Lexer<'a> {
     fn next(&mut self) -> Option<Self::Item> {
         self.trim_ascii_start();
 
+        if self.remaining().is_empty() {
+            return None;
+        }
+
         // Symbols : single char
         if let Some(t) = self.next_symbolic_token() {
             self.idx += t.ascii_length();
             return Some(Ok(t));
         }
 
-        match self.next_non_whitespace_chunk() {
-            Some("int") => Some(Ok(t!("int"))),
-            Some("void") => Some(Ok(t!("void"))),
-            Some("return") => Some(Ok(t!("return"))),
-            Some(number_string) if INTEGER_REGEX.is_match(number_string) => {
-                self.idx += number_string.len();
-                let parsed = number_string.parse::<i32>().unwrap(); // asserted to not panic
-                Some(Ok(Token::Constant(parsed)))
+        // keywords
+        for kw in ALL_KEYWORDS {
+            if self.remaining().starts_with(kw.as_str()) {
+                self.idx += kw.as_str().len();
+                return Some(Ok(Token::Keyword(*kw)));
             }
-            Some(identifier) if IDENTIFIER_REGEX.is_match(identifier) => {
-                self.idx += identifier.len();
-                Some(Ok(Token::identifier(identifier)))
-            }
-            Some(else_chunk) => Some(Err(format!("Unexpected token: {}", else_chunk))),
-            None => None,
         }
+
+        // constants?
+        if let Some(m) = INTEGER_REGEX.find(self.remaining()) {
+            let constant = m.as_str().parse::<i32>().unwrap();
+            self.idx += m.len();
+            return Some(Ok(Token::Constant(constant)));
+        }
+
+        // identifiers?
+        if let Some(m) = IDENTIFIER_REGEX.find(self.remaining()) {
+            let identifier = m.as_str();
+            self.idx += identifier.len();
+            return Some(Ok(Token::identifier(identifier)));
+        }
+
+        Some(Err(format!(
+            "Unexpected character: {}",
+            self.remaining().chars().next().unwrap()
+        )))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn test_lexer_success(input: &str, expected_tokens: Vec<Token<'static>>) {
+        for (token, expected) in Lexer::new(input).zip(expected_tokens) {
+            assert!(token.is_ok());
+            assert_eq!(token.unwrap(), expected);
+        }
+    }
+
+    #[test]
+    fn test_lexer_case_constant_and_semicolon_are_adjacent() {
+        test_lexer_success("return 3;", vec![t!("return"), Token::Constant(3), t!(";")]);
     }
 }
