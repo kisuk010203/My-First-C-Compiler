@@ -1,10 +1,12 @@
+use std::borrow::Cow;
+
 #[derive(Debug)]
-pub enum Program {
-    Program(FuncDef),
+pub enum Program<'a> {
+    Program(FuncDef<'a>),
 }
 #[derive(Debug)]
-pub enum FuncDef {
-    Fn(String, Statement), // Name and Body of function
+pub enum FuncDef<'a> {
+    Fn(Cow<'a, str>, Statement), // Name and Body of function
 }
 #[derive(Debug)]
 pub enum Statement {
