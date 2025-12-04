@@ -104,8 +104,9 @@ where
             }
             Some(Err(_)) => {
                 // Consume and return the error
-                match self.lexer.next().transpose()? {
-                    _ => unreachable!(),
+                match self.lexer.next() {
+                    Some(Err(err)) => Err(err),
+                    _ => unreachable!("next and peek should return same result"),
                 }
             }
             None => Ok(false), // End of input
