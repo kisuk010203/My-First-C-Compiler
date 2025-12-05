@@ -239,13 +239,11 @@ where
 
     fn expect_type(&mut self) -> Result<Type, CompilerParseError> {
         match self.peek_token()? {
-            Some(token) => match Type::from_token_type(&token.kind) {
-                Some(type_) => {
-                    self.next_token()?;
-                    Ok(type_)
-                }
-                None => Err(ParseError::expected_type(token.kind).with_span(token.span)),
-            },
+            Some(token) => {
+                self.next_token()?;
+                Type::from_token_type(&token.kind)
+                    .ok_or(ParseError::expected_type(token.kind).with_span(token.span))
+            }
             None => Err(ParseError::expected_type_eof().with_span(self.eof_span)),
         }
     }
