@@ -1,7 +1,11 @@
 use std::borrow::Cow;
 use std::iter::Peekable;
 
-use crate::lexer_base::{error::LexError, lexer::Lexer, token::Token};
+use crate::lexer_base::{
+    error::LexError,
+    lexer::Lexer,
+    token::{Token, TokenType},
+};
 use crate::parser_base::{error::ParseError, grammar::*};
 use crate::t;
 
@@ -39,13 +43,17 @@ where
 
     pub fn parse_expression(&mut self) -> Result<Expression, ParseError> {
         match self.lexer.next().transpose()? {
-            Some(Token::Constant(value)) => {
-                let expr = Expression::Constant(value);
-                Ok(expr)
+            Some(token) if matches!(token.kind, TokenType::Constant(_)) => {
+                if let TokenType::Constant(value) = token.kind {
+                    let expr = Expression::Constant(value);
+                    Ok(expr)
+                } else {
+                    unreachable!()
+                }
             }
             Some(token) => Err(ParseError::UnexpectedToken {
                 expected: "expression starter token".to_string(),
-                found: Some(format!("{:?}", token)),
+                found: Some(format!("{:?}", token.kind)),
             }),
             None => Err(ParseError::ExpectedExpression),
         }
@@ -71,24 +79,34 @@ where
         Ok(FuncDef::Fn(func_name, body))
     }
 
-    fn expect(&mut self, expected: Token<'static>) -> Result<(), ParseError> {
+    fn expect(&mut self, expected: TokenType<'static>) -> Result<(), ParseError> {
         match self.lexer.next().transpose()? {
-            Some(token) if token == expected => Ok(()),
-            Some(unexpected) => Err(ParseError::unexpected_token(expected, Some(unexpected))),
+            Some(token) if token.kind == expected => Ok(()),
+            Some(unexpected) => Err(ParseError::unexpected_token(
+                expected,
+                Some(unexpected.kind),
+            )),
             None => Err(ParseError::unexpected_end_of_input(expected)),
         }
     }
 
     fn expect_identifier(&mut self) -> Result<Cow<'a, str>, ParseError> {
         match self.lexer.next().transpose()? {
-            Some(Token::Identifier(name)) => Ok(name),
-            other => Err(ParseError::expected_identifier(other)),
+            Some(token) if matches!(token.kind, TokenType::Identifier(_)) => {
+                if let TokenType::Identifier(name) = token.kind {
+                    Ok(name)
+                } else {
+                    unreachable!()
+                }
+            }
+            Some(token) => Err(ParseError::expected_identifier(Some(token.kind))),
+            None => Err(ParseError::expected_identifier(None)),
         }
     }
 
-    fn expect_optional(&mut self, expected: Token<'static>) -> Result<bool, ParseError> {
+    fn expect_optional(&mut self, expected: TokenType<'static>) -> Result<bool, ParseError> {
         match self.lexer.peek() {
-            Some(Ok(token)) if *token == expected => {
+            Some(Ok(token)) if token.kind == expected => {
                 self.lexer.next(); // Consume it
                 Ok(true)
             }

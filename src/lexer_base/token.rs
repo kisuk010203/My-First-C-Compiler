@@ -1,27 +1,59 @@
 use std::borrow::Cow;
 
-pub const ALL_KEYWORDS: &[KeywordType] =
-    &[KeywordType::Int, KeywordType::Void, KeywordType::Return];
+pub const ALL_KEYWORDS: &[TokenType] = &[TokenType::Int, TokenType::Void, TokenType::Return];
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum KeywordType {
-    Int,
-    Void,
-    Return,
+/// Span represents the location information of a token in the source code
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Span {
+    pub start: usize,  // byte offset in source (inclusive)
+    pub end: usize,    // byte offset in source (exclusive)
+    pub line: usize,   // 1-based line number
+    pub column: usize, // 1-based column number (at start of token)
 }
 
-impl KeywordType {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            KeywordType::Int => "int",
-            KeywordType::Void => "void",
-            KeywordType::Return => "return",
+impl Span {
+    pub fn new(start: usize, end: usize, line: usize, column: usize) -> Self {
+        Self {
+            start,
+            end,
+            line,
+            column,
         }
     }
 }
 
+/// Token represents a lexical token with its type and location
+#[derive(Debug, Clone)]
+pub struct Token<'a> {
+    pub kind: TokenType<'a>,
+    pub span: Span,
+}
+
+impl<'a> Token<'a> {
+    pub fn new(kind: TokenType<'a>, span: Span) -> Self {
+        Self { kind, span }
+    }
+}
+
+/// For testing convenience, compare only the kind, ignoring span
+impl<'a> PartialEq for Token<'a> {
+    fn eq(&self, other: &Self) -> bool {
+        self.kind == other.kind
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
-pub enum SymbolType {
+pub enum TokenType<'a> {
+    // Identifiers and literals
+    Identifier(Cow<'a, str>), // [a-zA-Z_]\w*
+    Constant(i32),            // [0-9]+
+
+    // Keywords
+    Int,
+    Void,
+    Return,
+
+    // Symbols
     Semicolon,
     LParen,
     RParen,
@@ -29,37 +61,42 @@ pub enum SymbolType {
     RBrace,
 }
 
-impl SymbolType {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            SymbolType::Semicolon => ";",
-            SymbolType::LParen => "(",
-            SymbolType::RParen => ")",
-            SymbolType::LBrace => "{",
-            SymbolType::RBrace => "}",
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum Token<'a> {
-    Identifier(Cow<'a, str>), // [a-zA-Z_]\w*
-    Constant(i32),            // [0-9]+
-    Keyword(KeywordType),     // int void return
-    Symbol(SymbolType),       // ; , ( ) { }
-}
-
-impl<'a> Token<'a> {
+impl<'a> TokenType<'a> {
     pub fn identifier(input: &'a str) -> Self {
-        Token::Identifier(Cow::Borrowed(input))
+        TokenType::Identifier(Cow::Borrowed(input))
+    }
+
+    pub fn as_str(&self) -> &str {
+        match self {
+            TokenType::Int => "int",
+            TokenType::Void => "void",
+            TokenType::Return => "return",
+            TokenType::Semicolon => ";",
+            TokenType::LParen => "(",
+            TokenType::RParen => ")",
+            TokenType::LBrace => "{",
+            TokenType::RBrace => "}",
+            TokenType::Identifier(s) => s.as_ref(),
+            TokenType::Constant(_) => {
+                // Note: This returns a reference to a temporary string
+                // For constants, ascii_length() should be used instead
+                unreachable!("as_str() should not be called on Constant tokens")
+            }
+        }
     }
 
     pub fn ascii_length(&self) -> usize {
         match self {
-            Token::Identifier(s) => s.len(),
-            Token::Constant(n) => n.to_string().len(),
-            Token::Keyword(kw) => kw.as_str().len(),
-            Token::Symbol(sym) => sym.as_str().len(),
+            TokenType::Identifier(s) => s.len(),
+            TokenType::Constant(n) => n.to_string().len(),
+            TokenType::Int => 3,
+            TokenType::Void => 4,
+            TokenType::Return => 6,
+            TokenType::Semicolon
+            | TokenType::LParen
+            | TokenType::RParen
+            | TokenType::LBrace
+            | TokenType::RBrace => 1,
         }
     }
 }

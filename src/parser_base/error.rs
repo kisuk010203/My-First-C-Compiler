@@ -1,4 +1,4 @@
-use crate::lexer_base::{error::LexError, token::Token};
+use crate::lexer_base::{error::LexError, token::TokenType};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -26,20 +26,20 @@ pub enum ParseError {
 }
 
 impl ParseError {
-    pub fn unexpected_token(expected: Token<'static>, found: Option<Token>) -> Self {
+    pub fn unexpected_token(expected: TokenType<'static>, found: Option<TokenType>) -> Self {
         ParseError::UnexpectedToken {
             expected: format!("{:?}", expected),
             found: found.map(|t| format!("{:?}", t)),
         }
     }
 
-    pub fn expected_identifier(found: Option<Token>) -> Self {
+    pub fn expected_identifier(found: Option<TokenType>) -> Self {
         ParseError::ExpectedIdentifier {
             found: found.map(|t| format!("{:?}", t)),
         }
     }
 
-    pub fn unexpected_end_of_input(expected: Token<'static>) -> Self {
+    pub fn unexpected_end_of_input(expected: TokenType<'static>) -> Self {
         ParseError::UnexpectedEndOfInput {
             expected: format!("{:?}", expected),
         }
