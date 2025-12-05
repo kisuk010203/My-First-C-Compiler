@@ -632,6 +632,188 @@ mod tests {
         // Just verify it parses without panicking - detailed structure check would be very verbose
     }
 
+    // === Comparison Operator Tests ===
+
+    #[test]
+    fn test_parse_less_than() {
+        let input = "int main(void) { return 1 < 2; }";
+        let result = parse_program(input);
+        assert!(result.is_ok());
+        let program = result.unwrap();
+        match &program.functions[0].body.statements[0] {
+            Statement::Return {
+                expr: Expression::Binary { op, lhs, rhs },
+            } => {
+                assert!(matches!(op, crate::parser_base::BinaryOp::LT));
+                assert!(matches!(**lhs, Expression::Constant(1)));
+                assert!(matches!(**rhs, Expression::Constant(2)));
+            }
+            _ => panic!("Expected less than comparison"),
+        }
+    }
+
+    #[test]
+    fn test_parse_greater_than() {
+        let input = "int main(void) { return 5 > 3; }";
+        let result = parse_program(input);
+        assert!(result.is_ok());
+        let program = result.unwrap();
+        match &program.functions[0].body.statements[0] {
+            Statement::Return {
+                expr: Expression::Binary { op, lhs, rhs },
+            } => {
+                assert!(matches!(op, crate::parser_base::BinaryOp::GT));
+                assert!(matches!(**lhs, Expression::Constant(5)));
+                assert!(matches!(**rhs, Expression::Constant(3)));
+            }
+            _ => panic!("Expected greater than comparison"),
+        }
+    }
+
+    #[test]
+    fn test_parse_less_than_or_equal() {
+        let input = "int main(void) { return 1 <= 2; }";
+        let result = parse_program(input);
+        assert!(result.is_ok());
+        let program = result.unwrap();
+        match &program.functions[0].body.statements[0] {
+            Statement::Return {
+                expr: Expression::Binary { op, lhs, rhs },
+            } => {
+                assert!(matches!(op, crate::parser_base::BinaryOp::LTE));
+                assert!(matches!(**lhs, Expression::Constant(1)));
+                assert!(matches!(**rhs, Expression::Constant(2)));
+            }
+            _ => panic!("Expected less than or equal comparison"),
+        }
+    }
+
+    #[test]
+    fn test_parse_greater_than_or_equal() {
+        let input = "int main(void) { return 5 >= 3; }";
+        let result = parse_program(input);
+        assert!(result.is_ok());
+        let program = result.unwrap();
+        match &program.functions[0].body.statements[0] {
+            Statement::Return {
+                expr: Expression::Binary { op, lhs, rhs },
+            } => {
+                assert!(matches!(op, crate::parser_base::BinaryOp::GTE));
+                assert!(matches!(**lhs, Expression::Constant(5)));
+                assert!(matches!(**rhs, Expression::Constant(3)));
+            }
+            _ => panic!("Expected greater than or equal comparison"),
+        }
+    }
+
+    #[test]
+    fn test_parse_equal_equal() {
+        let input = "int main(void) { return 1 == 1; }";
+        let result = parse_program(input);
+        assert!(result.is_ok());
+        let program = result.unwrap();
+        match &program.functions[0].body.statements[0] {
+            Statement::Return {
+                expr: Expression::Binary { op, lhs, rhs },
+            } => {
+                assert!(matches!(op, crate::parser_base::BinaryOp::EQ));
+                assert!(matches!(**lhs, Expression::Constant(1)));
+                assert!(matches!(**rhs, Expression::Constant(1)));
+            }
+            _ => panic!("Expected equality comparison"),
+        }
+    }
+
+    #[test]
+    fn test_parse_not_equal() {
+        let input = "int main(void) { return 1 != 2; }";
+        let result = parse_program(input);
+        assert!(result.is_ok());
+        let program = result.unwrap();
+        match &program.functions[0].body.statements[0] {
+            Statement::Return {
+                expr: Expression::Binary { op, lhs, rhs },
+            } => {
+                assert!(matches!(op, crate::parser_base::BinaryOp::NEQ));
+                assert!(matches!(**lhs, Expression::Constant(1)));
+                assert!(matches!(**rhs, Expression::Constant(2)));
+            }
+            _ => panic!("Expected not equal comparison"),
+        }
+    }
+
+    #[test]
+    fn test_parse_comparison_precedence() {
+        // 1 + 2 < 3 * 4 should be parsed as (1 + 2) < (3 * 4)
+        let input = "int main(void) { return 1 + 2 < 3 * 4; }";
+        let result = parse_program(input);
+        assert!(result.is_ok());
+        let program = result.unwrap();
+        match &program.functions[0].body.statements[0] {
+            Statement::Return {
+                expr: Expression::Binary { op, lhs, rhs },
+            } => {
+                // Top level should be less than
+                assert!(matches!(op, crate::parser_base::BinaryOp::LT));
+
+                // Left side should be (1 + 2)
+                match &**lhs {
+                    Expression::Binary { op, lhs, rhs } => {
+                        assert!(matches!(op, crate::parser_base::BinaryOp::Add));
+                        assert!(matches!(**lhs, Expression::Constant(1)));
+                        assert!(matches!(**rhs, Expression::Constant(2)));
+                    }
+                    _ => panic!("Expected addition on left side"),
+                }
+
+                // Right side should be (3 * 4)
+                match &**rhs {
+                    Expression::Binary { op, lhs, rhs } => {
+                        assert!(matches!(op, crate::parser_base::BinaryOp::Multiply));
+                        assert!(matches!(**lhs, Expression::Constant(3)));
+                        assert!(matches!(**rhs, Expression::Constant(4)));
+                    }
+                    _ => panic!("Expected multiplication on right side"),
+                }
+            }
+            _ => panic!("Expected binary expression"),
+        }
+    }
+
+    #[test]
+    fn test_parse_comparison_chaining() {
+        // Test that 1 < 2 == 3 < 4 parses as (1 < 2) == (3 < 4)
+        let input = "int main(void) { return 1 < 2 == 3 < 4; }";
+        let result = parse_program(input);
+        assert!(result.is_ok());
+        let program = result.unwrap();
+        match &program.functions[0].body.statements[0] {
+            Statement::Return {
+                expr: Expression::Binary { op, lhs, rhs },
+            } => {
+                // Top level should be equality
+                assert!(matches!(op, crate::parser_base::BinaryOp::EQ));
+
+                // Left side should be (1 < 2)
+                match &**lhs {
+                    Expression::Binary { op, .. } => {
+                        assert!(matches!(op, crate::parser_base::BinaryOp::LT));
+                    }
+                    _ => panic!("Expected less than on left side"),
+                }
+
+                // Right side should be (3 < 4)
+                match &**rhs {
+                    Expression::Binary { op, .. } => {
+                        assert!(matches!(op, crate::parser_base::BinaryOp::LT));
+                    }
+                    _ => panic!("Expected less than on right side"),
+                }
+            }
+            _ => panic!("Expected binary expression"),
+        }
+    }
+
     // === Error Cases (Parser-specific) ===
 
     #[test]

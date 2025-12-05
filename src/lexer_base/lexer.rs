@@ -70,7 +70,22 @@ impl<'a> Lexer<'a> {
     }
 
     fn next_symbolic_token(&self) -> Option<TokenType<'a>> {
-        match self.remaining().chars().next() {
+        let remaining = self.remaining();
+
+        // Check for two-character operators first
+        if remaining.len() >= 2 {
+            let two_char = &remaining[..2];
+            match two_char {
+                "<=" => return Some(t!("<=")),
+                ">=" => return Some(t!(">=")),
+                "==" => return Some(t!("==")),
+                "!=" => return Some(t!("!=")),
+                _ => {}
+            }
+        }
+
+        // Check for single-character operators
+        match remaining.chars().next() {
             Some(';') => Some(t!(";")),
             Some('{') => Some(t!("{")),
             Some('}') => Some(t!("}")),
@@ -81,6 +96,8 @@ impl<'a> Lexer<'a> {
             Some('*') => Some(t!("*")),
             Some('/') => Some(t!("/")),
             Some('!') => Some(t!("!")),
+            Some('<') => Some(t!("<")),
+            Some('>') => Some(t!(">")),
             _ => None,
         }
     }
@@ -255,5 +272,74 @@ mod tests {
         let err = result.unwrap_err();
         assert_eq!(err.error, LexError::UnexpectedCharacter('@'));
         assert_eq!(err.span.start, 6);
+    }
+
+    #[test]
+    fn test_lexer_comparison_less_than() {
+        test_lexer_success(
+            "1 < 2",
+            vec![TokenType::Constant(1), t!("<"), TokenType::Constant(2)],
+        )
+        .unwrap();
+    }
+
+    #[test]
+    fn test_lexer_comparison_greater_than() {
+        test_lexer_success(
+            "1 > 2",
+            vec![TokenType::Constant(1), t!(">"), TokenType::Constant(2)],
+        )
+        .unwrap();
+    }
+
+    #[test]
+    fn test_lexer_comparison_less_than_or_equal() {
+        test_lexer_success(
+            "1 <= 2",
+            vec![TokenType::Constant(1), t!("<="), TokenType::Constant(2)],
+        )
+        .unwrap();
+    }
+
+    #[test]
+    fn test_lexer_comparison_greater_than_or_equal() {
+        test_lexer_success(
+            "1 >= 2",
+            vec![TokenType::Constant(1), t!(">="), TokenType::Constant(2)],
+        )
+        .unwrap();
+    }
+
+    #[test]
+    fn test_lexer_comparison_equal_equal() {
+        test_lexer_success(
+            "1 == 2",
+            vec![TokenType::Constant(1), t!("=="), TokenType::Constant(2)],
+        )
+        .unwrap();
+    }
+
+    #[test]
+    fn test_lexer_comparison_not_equal() {
+        test_lexer_success(
+            "1 != 2",
+            vec![TokenType::Constant(1), t!("!="), TokenType::Constant(2)],
+        )
+        .unwrap();
+    }
+
+    #[test]
+    fn test_lexer_comparison_in_expression() {
+        test_lexer_success(
+            "return x <= 10;",
+            vec![
+                t!("return"),
+                TokenType::identifier("x"),
+                t!("<="),
+                TokenType::Constant(10),
+                t!(";"),
+            ],
+        )
+        .unwrap();
     }
 }

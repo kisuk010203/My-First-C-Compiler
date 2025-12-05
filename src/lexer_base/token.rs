@@ -21,7 +21,14 @@ pub enum StaticToken {
     Star,
     Slash,
     Not,
-    Eq,
+
+    // Comparison operators
+    LessThan,
+    GreaterThan,
+    LessThanOrEqual,
+    GreaterThanOrEqual,
+    EqualEqual,
+    NotEqual,
 }
 
 impl StaticToken {
@@ -41,7 +48,13 @@ impl StaticToken {
             StaticToken::Star => "*",
             StaticToken::Slash => "/",
             StaticToken::Not => "!",
-            StaticToken::Eq => "=",
+
+            StaticToken::LessThan => "<",
+            StaticToken::GreaterThan => ">",
+            StaticToken::LessThanOrEqual => "<=",
+            StaticToken::GreaterThanOrEqual => ">=",
+            StaticToken::EqualEqual => "==",
+            StaticToken::NotEqual => "!=",
         }
     }
 }

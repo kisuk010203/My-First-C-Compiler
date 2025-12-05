@@ -51,7 +51,12 @@ impl BinaryOp {
             TokenType::Static(StaticToken::Minus) => Some(BinaryOp::Subtract),
             TokenType::Static(StaticToken::Star) => Some(BinaryOp::Multiply),
             TokenType::Static(StaticToken::Slash) => Some(BinaryOp::Divide),
-            // TODO: Add comparison operators when they're added to StaticToken
+            TokenType::Static(StaticToken::LessThan) => Some(BinaryOp::LT),
+            TokenType::Static(StaticToken::GreaterThan) => Some(BinaryOp::GT),
+            TokenType::Static(StaticToken::LessThanOrEqual) => Some(BinaryOp::LTE),
+            TokenType::Static(StaticToken::GreaterThanOrEqual) => Some(BinaryOp::GTE),
+            TokenType::Static(StaticToken::EqualEqual) => Some(BinaryOp::EQ),
+            TokenType::Static(StaticToken::NotEqual) => Some(BinaryOp::NEQ),
             _ => None,
         }
     }

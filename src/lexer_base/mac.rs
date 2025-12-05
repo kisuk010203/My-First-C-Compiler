@@ -40,4 +40,22 @@ macro_rules! t {
     ("return") => {
         $crate::lexer_base::TokenType::Static($crate::lexer_base::StaticToken::Return)
     };
+    ("<") => {
+        $crate::lexer_base::TokenType::Static($crate::lexer_base::StaticToken::LessThan)
+    };
+    (">") => {
+        $crate::lexer_base::TokenType::Static($crate::lexer_base::StaticToken::GreaterThan)
+    };
+    ("<=") => {
+        $crate::lexer_base::TokenType::Static($crate::lexer_base::StaticToken::LessThanOrEqual)
+    };
+    (">=") => {
+        $crate::lexer_base::TokenType::Static($crate::lexer_base::StaticToken::GreaterThanOrEqual)
+    };
+    ("==") => {
+        $crate::lexer_base::TokenType::Static($crate::lexer_base::StaticToken::EqualEqual)
+    };
+    ("!=") => {
+        $crate::lexer_base::TokenType::Static($crate::lexer_base::StaticToken::NotEqual)
+    };
 }
