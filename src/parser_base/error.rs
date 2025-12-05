@@ -49,6 +49,19 @@ impl ParseError {
         }
     }
 
+    pub fn expected_type(found: TokenType) -> Self {
+        ParseError::UnexpectedToken {
+            expected: "type".to_string(),
+            found: format!("{:?}", found),
+        }
+    }
+
+    pub fn expected_type_eof() -> Self {
+        ParseError::UnexpectedEof {
+            expected: "type".to_string(),
+        }
+    }
+
     /// Helper for expecting an expression
     pub fn expected_expression(found: TokenType) -> Self {
         ParseError::UnexpectedToken {

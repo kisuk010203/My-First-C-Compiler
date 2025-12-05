@@ -1,10 +1,11 @@
 use std::borrow::Cow;
 
-use crate::parser_base::Expression;
+use crate::parser_base::{Expression, grammar::Type};
 
 /// A function definition
 #[derive(Debug)]
 pub struct FuncDef<'a> {
+    pub return_type: Type,
     pub name: Cow<'a, str>,
     pub params: Vec<Cow<'a, str>>,
     pub body: Block<'a>,

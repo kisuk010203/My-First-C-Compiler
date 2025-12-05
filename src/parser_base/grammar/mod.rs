@@ -1,6 +1,8 @@
+mod _type;
 mod expr;
 mod stmt;
 
+pub use _type::Type;
 pub use expr::*;
 pub use stmt::*;
 
