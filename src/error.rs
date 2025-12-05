@@ -40,8 +40,8 @@ where
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "{} at line {}, column {} (byte offset {})",
-            self.error, self.span.line, self.span.column, self.span.start
+            "{} [at {}:{}]",
+            self.error, self.span.line, self.span.column
         )
     }
 }

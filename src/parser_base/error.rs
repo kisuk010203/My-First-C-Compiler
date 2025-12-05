@@ -9,45 +9,80 @@ pub enum ParseError {
     #[error("Lexer error: {0}")]
     LexError(#[from] LexError),
 
-    #[error("Expected {expected:?}, but found {found:?}")]
-    UnexpectedToken {
-        expected: String,
-        found: Option<String>,
-    },
+    /// Expected a specific token, but found something else
+    #[error("Expected {expected}, but found {found}")]
+    UnexpectedToken { expected: String, found: String },
 
-    #[error("Expected any statement starter token")]
-    ExpectedStatement,
-
-    #[error("Expected identifier, but found {found:?}")]
-    ExpectedIdentifier { found: Option<String> },
-
-    #[error("Expected expression, but found end of input")]
-    ExpectedExpression,
-
-    #[error("Unexpected tokens after function definition: {tokens:?}")]
-    UnexpectedTokensAfterFunction { tokens: String },
-
-    #[error("Expected {expected:?}, but found end of input")]
-    UnexpectedEndOfInput { expected: String },
+    /// Expected a specific token, but reached end of input
+    #[error("Expected {expected}, but reached end of file")]
+    UnexpectedEof { expected: String },
 }
 
 impl ParseError {
-    pub fn unexpected_token(expected: TokenType<'static>, found: Option<TokenType>) -> Self {
+    /// Create an error for when we expected a specific token but found another
+    pub fn unexpected_token(expected: TokenType<'static>, found: TokenType) -> Self {
         ParseError::UnexpectedToken {
             expected: format!("{:?}", expected),
-            found: found.map(|t| format!("{:?}", t)),
+            found: format!("{:?}", found),
         }
     }
 
-    pub fn expected_identifier(found: Option<TokenType>) -> Self {
-        ParseError::ExpectedIdentifier {
-            found: found.map(|t| format!("{:?}", t)),
-        }
-    }
-
-    pub fn unexpected_end_of_input(expected: TokenType<'static>) -> Self {
-        ParseError::UnexpectedEndOfInput {
+    /// Create an error for when we expected a specific token but hit EOF
+    pub fn unexpected_eof(expected: TokenType<'static>) -> Self {
+        ParseError::UnexpectedEof {
             expected: format!("{:?}", expected),
+        }
+    }
+
+    /// Helper for expecting an identifier specifically
+    pub fn expected_identifier(found: TokenType) -> Self {
+        ParseError::UnexpectedToken {
+            expected: "identifier".to_string(),
+            found: format!("{:?}", found),
+        }
+    }
+
+    /// Helper for expecting an identifier but hit EOF
+    pub fn expected_identifier_eof() -> Self {
+        ParseError::UnexpectedEof {
+            expected: "identifier".to_string(),
+        }
+    }
+
+    /// Helper for expecting an expression
+    pub fn expected_expression(found: TokenType) -> Self {
+        ParseError::UnexpectedToken {
+            expected: "expression".to_string(),
+            found: format!("{:?}", found),
+        }
+    }
+
+    /// Helper for expecting an expression but hit EOF
+    pub fn expected_expression_eof() -> Self {
+        ParseError::UnexpectedEof {
+            expected: "expression".to_string(),
+        }
+    }
+
+    /// Helper for expecting a statement
+    pub fn expected_statement(found: TokenType) -> Self {
+        ParseError::UnexpectedToken {
+            expected: "statement".to_string(),
+            found: format!("{:?}", found),
+        }
+    }
+
+    /// Helper for expecting a statement but hit EOF
+    pub fn expected_statement_eof() -> Self {
+        ParseError::UnexpectedEof {
+            expected: "statement".to_string(),
+        }
+    }
+
+    /// Helper for generic expected string
+    pub fn unexpected_eof_with_message(expected: impl Into<String>) -> Self {
+        ParseError::UnexpectedEof {
+            expected: expected.into(),
         }
     }
 }

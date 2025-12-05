@@ -41,10 +41,10 @@ where
         }
 
         if functions.is_empty() {
-            return Err(ParseError::UnexpectedEndOfInput {
-                expected: "function definition".to_string(),
-            }
-            .with_span(self.eof_span));
+            return Err(
+                ParseError::unexpected_eof_with_message("function definition")
+                    .with_span(self.eof_span),
+            );
         }
 
         Ok(Program { functions })
@@ -88,10 +88,8 @@ where
                     statements.push(self.parse_statement()?);
                 }
                 None => {
-                    return Err(ParseError::UnexpectedEndOfInput {
-                        expected: "'}' or statement".to_string(),
-                    }
-                    .with_span(self.eof_span));
+                    return Err(ParseError::unexpected_eof_with_message("'}' or statement")
+                        .with_span(self.eof_span));
                 }
             }
         }
@@ -113,15 +111,10 @@ where
             Some(Token {
                 kind: t!("return"), ..
             }) => self.parse_return_statement(),
-            Some(token) => Err(ParseError::UnexpectedToken {
-                expected: "statement".to_string(),
-                found: Some(format!("{:?}", token.kind)),
+            Some(token) => {
+                Err(ParseError::expected_statement(token.kind.clone()).with_span(token.span))
             }
-            .with_span(token.span)),
-            None => Err(ParseError::UnexpectedEndOfInput {
-                expected: "statement".to_string(),
-            }
-            .with_span(self.eof_span)),
+            None => Err(ParseError::expected_statement_eof().with_span(self.eof_span)),
         }
     }
 
@@ -149,15 +142,8 @@ where
                 kind: TokenType::Identifier(name),
                 ..
             }) => Ok(Expression::Variable(name)),
-            Some(token) => Err(ParseError::UnexpectedToken {
-                expected: "expression".to_string(),
-                found: Some(format!("{:?}", token.kind)),
-            }
-            .with_span(token.span)),
-            None => Err(ParseError::UnexpectedEndOfInput {
-                expected: "expression".to_string(),
-            }
-            .with_span(self.eof_span)),
+            Some(token) => Err(ParseError::expected_expression(token.kind).with_span(token.span)),
+            None => Err(ParseError::expected_expression_eof().with_span(self.eof_span)),
         }
     }
 
@@ -170,11 +156,11 @@ where
             .map_err(|e| e.convert_error())?
         {
             Some(token) if token.kind == expected => Ok(()),
-            Some(unexpected) => Err(
-                ParseError::unexpected_token(expected, Some(unexpected.kind))
-                    .with_span(unexpected.span),
-            ),
-            None => Err(ParseError::unexpected_end_of_input(expected).with_span(self.eof_span)),
+            Some(unexpected) => {
+                Err(ParseError::unexpected_token(expected, unexpected.kind)
+                    .with_span(unexpected.span))
+            }
+            None => Err(ParseError::unexpected_eof(expected).with_span(self.eof_span)),
         }
     }
 
@@ -193,10 +179,8 @@ where
                     unreachable!()
                 }
             }
-            Some(token) => {
-                Err(ParseError::expected_identifier(Some(token.kind)).with_span(token.span))
-            }
-            None => Err(ParseError::expected_identifier(None).with_span(self.eof_span)),
+            Some(token) => Err(ParseError::expected_identifier(token.kind).with_span(token.span)),
+            None => Err(ParseError::expected_identifier_eof().with_span(self.eof_span)),
         }
     }
 
