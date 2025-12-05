@@ -15,6 +15,9 @@ pub enum ParseError {
         found: Option<String>,
     },
 
+    #[error("Expected any statement starter token")]
+    ExpectedStatement,
+
     #[error("Expected identifier, but found {found:?}")]
     ExpectedIdentifier { found: Option<String> },
 
