@@ -1,11 +1,8 @@
 use std::sync::LazyLock;
 
 use crate::{
-    error::CompilerError,
-    lexer_base::{
-        error::LexError,
-        token::{ALL_KEYWORDS, Span, Token, TokenType},
-    },
+    error::{CompilerError, IntoCompilerError},
+    lexer_base::{LexError, Span, Token, TokenType, token::ALL_KEYWORDS},
     t,
 };
 use regex::Regex;
@@ -144,10 +141,7 @@ impl<'a> Iterator for Lexer<'a> {
             let end_idx = self.idx + len;
             self.advance(len);
             let span = Span::new(start_idx, end_idx, start_line, start_column);
-            return Some(Err(CompilerError::new(
-                LexError::InvalidTokenFormat(token_str),
-                span,
-            )));
+            return Some(Err(LexError::InvalidTokenFormat(token_str).with_span(span)));
         }
 
         let unexpected_char = self.remaining().chars().next().unwrap();
@@ -155,10 +149,9 @@ impl<'a> Iterator for Lexer<'a> {
         let end_idx = self.idx + len;
         self.advance(len);
         let span = Span::new(start_idx, end_idx, start_line, start_column);
-        Some(Err(CompilerError::new(
-            LexError::UnexpectedCharacter(unexpected_char),
-            span,
-        )))
+        Some(Err(
+            LexError::UnexpectedCharacter(unexpected_char).with_span(span)
+        ))
     }
 }
 
