@@ -170,16 +170,10 @@ where
         mut lhs: Expression<'a>,
         min_bp: u8,
     ) -> Result<Expression<'a>, CompilerParseError> {
-        loop {
-            // Peek at the next token to see if it's a binary operator
-            let op = match self
-                .peek_token()?
-                .and_then(|t| BinaryOp::from_token_type(&t.kind))
-            {
-                Some(op) => op,
-                None => break, // EOF, done
-            };
-
+        while let Some(op) = self
+            .peek_token()?
+            .and_then(|t| BinaryOp::from_token_type(&t.kind))
+        {
             let (left_bp, right_bp) = op.infix_binding_power();
 
             // If the binding power is too low, stop
@@ -245,20 +239,14 @@ where
 
     fn expect_type(&mut self) -> Result<Type, CompilerParseError> {
         match self.peek_token()? {
-            Some(Token {
-                kind: t!("int"), ..
-            }) => {
-                self.next_token()?;
-                Ok(Type::Int)
-            }
-            Some(Token {
-                kind: t!("void"), ..
-            }) => {
-                self.next_token()?;
-                Ok(Type::Void)
-            }
-            Some(Token { kind, span }) => Err(ParseError::expected_type(kind).with_span(span)),
-            _ => Err(ParseError::expected_type_eof().with_span(self.eof_span)),
+            Some(token) => match Type::from_token_type(&token.kind) {
+                Some(type_) => {
+                    self.next_token()?;
+                    Ok(type_)
+                }
+                None => Err(ParseError::expected_type(token.kind).with_span(token.span)),
+            },
+            None => Err(ParseError::expected_type_eof().with_span(self.eof_span)),
         }
     }
 
