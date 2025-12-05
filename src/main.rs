@@ -23,7 +23,7 @@ fn main() {
         println!("Parsing tokens...");
         match parser::Parser::new(lexer).parse() {
             Err(e) => {
-                println!("Parser Error: {}", e.red());
+                println!("Parser Error: {}", format!("{}", e).red());
             }
             Ok(ast) => {
                 println!("Parsed AST: {:?}", ast);

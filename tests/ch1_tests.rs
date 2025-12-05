@@ -1,10 +1,13 @@
 use my_first_compiler::lexer_base::lexer;
-use my_first_compiler::parser_base::parser;
+use my_first_compiler::parser_base::{error::ParseError, parser};
 use std::fs;
 use walkdir::WalkDir;
 
-fn test_file(path: &str) -> Result<(), String> {
-    let input = fs::read_to_string(path).map_err(|e| format!("Failed to read file: {}", e))?;
+fn test_file(path: &str) -> Result<(), ParseError> {
+    let input = fs::read_to_string(path).map_err(|e| ParseError::UnexpectedToken {
+        expected: "valid file".to_string(),
+        found: Some(format!("IO error: {}", e)),
+    })?;
 
     let lexer = lexer::Lexer::new(input.as_str());
     parser::Parser::new(lexer).parse()?;

@@ -1,7 +1,10 @@
 use std::sync::LazyLock;
 
 use crate::{
-    lexer_base::token::{ALL_KEYWORDS, Token},
+    lexer_base::{
+        error::LexError,
+        token::{ALL_KEYWORDS, Token},
+    },
     t,
 };
 use regex::Regex;
@@ -46,7 +49,7 @@ impl<'a> Lexer<'a> {
 }
 
 impl<'a> Iterator for Lexer<'a> {
-    type Item = Result<Token<'a>, String>;
+    type Item = Result<Token<'a>, LexError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.trim_ascii_start();
@@ -54,6 +57,8 @@ impl<'a> Iterator for Lexer<'a> {
         if self.remaining().is_empty() {
             return None;
         }
+
+        let current_idx = self.idx;
 
         // Symbols : single char
         if let Some(t) = self.next_symbolic_token() {
@@ -82,11 +87,18 @@ impl<'a> Iterator for Lexer<'a> {
                 self.idx += m.len();
                 return Some(Ok(Token::identifier(m.as_str())));
             }
+
+            // Invalid token format (word that doesn't match any pattern)
+            let token_str = m.as_str().to_string();
+            self.idx += m.len();
+            return Some(Err(LexError::InvalidTokenFormat(token_str, current_idx)));
         }
 
-        Some(Err(format!(
-            "Unexpected character: {}",
-            self.remaining().chars().next().unwrap()
+        let unexpected_char = self.remaining().chars().next().unwrap();
+        self.idx += unexpected_char.len_utf8();
+        Some(Err(LexError::UnexpectedCharacter(
+            unexpected_char,
+            current_idx,
         )))
     }
 }
@@ -95,7 +107,10 @@ impl<'a> Iterator for Lexer<'a> {
 mod tests {
     use super::*;
 
-    fn test_lexer_success(input: &str, expected_tokens: Vec<Token<'static>>) -> Result<(), String> {
+    fn test_lexer_success(
+        input: &str,
+        expected_tokens: Vec<Token<'static>>,
+    ) -> Result<(), LexError> {
         for (token, expected) in Lexer::new(input).zip(expected_tokens) {
             assert!(token.is_ok());
             assert_eq!(token.unwrap(), expected);
@@ -107,7 +122,7 @@ mod tests {
     fn test_lexer_fail(input: &str) {
         assert!(
             Lexer::new(input)
-                .collect::<Result<Vec<Token>, String>>()
+                .collect::<Result<Vec<Token>, LexError>>()
                 .is_err()
         )
     }
@@ -125,5 +140,51 @@ mod tests {
     #[test]
     fn test_lexer_case_fail_for_unprocessable_identifier() {
         test_lexer_fail("123abc");
+    }
+
+    #[test]
+    fn test_lexer_error_unexpected_character() {
+        let result: Result<Vec<Token>, LexError> = Lexer::new("int main() { return @; }").collect();
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(err, LexError::UnexpectedCharacter('@', 20));
+    }
+
+    #[test]
+    fn test_lexer_error_unexpected_character_at_start() {
+        let result: Result<Vec<Token>, LexError> = Lexer::new("@invalid").collect();
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(err, LexError::UnexpectedCharacter('@', 0));
+    }
+
+    #[test]
+    fn test_lexer_error_invalid_token_format() {
+        let result: Result<Vec<Token>, LexError> = Lexer::new("123abc").collect();
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(err, LexError::InvalidTokenFormat("123abc".to_string(), 0));
+    }
+
+    #[test]
+    fn test_lexer_valid_identifier_with_underscore_prefix() {
+        // _123 is actually a valid identifier (starts with underscore, contains digits)
+        test_lexer_success("_123", vec![Token::identifier("_123")]).unwrap();
+    }
+
+    #[test]
+    fn test_lexer_error_multiple_special_chars() {
+        let result: Result<Vec<Token>, LexError> = Lexer::new("int main() #$").collect();
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(err, LexError::UnexpectedCharacter('#', 11));
+    }
+
+    #[test]
+    fn test_lexer_error_position_after_whitespace() {
+        let result: Result<Vec<Token>, LexError> = Lexer::new("int   @").collect();
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(err, LexError::UnexpectedCharacter('@', 6));
     }
 }

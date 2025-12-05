@@ -1,15 +1,14 @@
 use std::borrow::Cow;
 use std::iter::Peekable;
 
-use crate::lexer_base::lexer::Lexer;
-use crate::lexer_base::token::Token;
-use crate::parser_base::grammar::*;
+use crate::lexer_base::{error::LexError, lexer::Lexer, token::Token};
+use crate::parser_base::{error::ParseError, grammar::*};
 use crate::t;
 
 #[derive(Clone)]
 pub struct Parser<'a, I>
 where
-    I: Iterator<Item = Result<Token<'a>, String>>,
+    I: Iterator<Item = Result<Token<'a>, LexError>>,
 {
     lexer: Peekable<I>,
 }
@@ -24,43 +23,42 @@ impl<'a> Parser<'a, Lexer<'a>> {
 
 impl<'a, I> Parser<'a, I>
 where
-    I: Iterator<Item = Result<Token<'a>, String>>,
+    I: Iterator<Item = Result<Token<'a>, LexError>>,
 {
-    pub fn parse(mut self) -> Result<Program<'a>, String> {
+    pub fn parse(mut self) -> Result<Program<'a>, ParseError> {
         let fd = self.parse_function_def()?;
-        let remaining_tokens = self.lexer.collect::<Result<Vec<Token<'a>>, String>>()?;
+        let remaining_tokens = self.lexer.collect::<Result<Vec<Token<'a>>, LexError>>()?;
         if !remaining_tokens.is_empty() {
-            Err(format!(
-                "Unexpected tokens after function definition: {:?}",
-                remaining_tokens
-            ))
+            Err(ParseError::UnexpectedTokensAfterFunction {
+                tokens: format!("{:?}", remaining_tokens),
+            })
         } else {
             Ok(Program::Program(fd))
         }
     }
 
-    pub fn parse_expression(&mut self) -> Result<Expression, String> {
+    pub fn parse_expression(&mut self) -> Result<Expression, ParseError> {
         match self.lexer.next().transpose()? {
             Some(Token::Constant(value)) => {
                 let expr = Expression::Constant(value);
                 Ok(expr)
             }
-            Some(token) => Err(format!(
-                "Expected starter token of any expression, but found {:?}",
-                token
-            )),
-            None => Err("Expected expression, but found end of input".to_string()),
+            Some(token) => Err(ParseError::UnexpectedToken {
+                expected: "expression starter token".to_string(),
+                found: Some(format!("{:?}", token)),
+            }),
+            None => Err(ParseError::ExpectedExpression),
         }
     }
 
-    pub fn parse_statement(&mut self) -> Result<Statement, String> {
+    pub fn parse_statement(&mut self) -> Result<Statement, ParseError> {
         self.expect(t!("return"))?;
         let inner = self.parse_expression()?;
         self.expect(t!(";"))?;
         Ok(Statement::Return(inner))
     }
 
-    pub fn parse_function_def(&mut self) -> Result<FuncDef<'a>, String> {
+    pub fn parse_function_def(&mut self) -> Result<FuncDef<'a>, ParseError> {
         self.expect(t!("int"))?;
         let func_name = self.expect_identifier()?;
         self.expect(t!("("))?;
@@ -73,26 +71,22 @@ where
         Ok(FuncDef::Fn(func_name, body))
     }
 
-    fn expect(&mut self, expected: Token<'static>) -> Result<(), String> {
+    fn expect(&mut self, expected: Token<'static>) -> Result<(), ParseError> {
         match self.lexer.next().transpose()? {
             Some(token) if token == expected => Ok(()),
-            Some(unexpected) => Err(format!(
-                "Expected {:?}, but found {:?}",
-                expected, unexpected
-            )),
-            None => Err(format!("Expected {:?}, but found end of input", expected)),
+            Some(unexpected) => Err(ParseError::unexpected_token(expected, Some(unexpected))),
+            None => Err(ParseError::unexpected_end_of_input(expected)),
         }
     }
 
-    fn expect_identifier(&mut self) -> Result<Cow<'a, str>, String> {
+    fn expect_identifier(&mut self) -> Result<Cow<'a, str>, ParseError> {
         match self.lexer.next().transpose()? {
             Some(Token::Identifier(name)) => Ok(name),
-            Some(token) => Err(format!("Expected identifier, but found {:?}", token)),
-            None => Err("Expected identifier, but found end of input".to_string()),
+            other => Err(ParseError::expected_identifier(other)),
         }
     }
 
-    fn expect_optional(&mut self, expected: Token<'static>) -> Result<bool, String> {
+    fn expect_optional(&mut self, expected: Token<'static>) -> Result<bool, ParseError> {
         match self.lexer.peek() {
             Some(Ok(token)) if *token == expected => {
                 self.lexer.next(); // Consume it
@@ -105,7 +99,7 @@ where
             Some(Err(_)) => {
                 // Consume and return the error
                 match self.lexer.next() {
-                    Some(Err(err)) => Err(err),
+                    Some(Err(err)) => Err(err.into()),
                     _ => unreachable!("next and peek should return same result"),
                 }
             }
