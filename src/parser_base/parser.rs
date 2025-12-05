@@ -56,7 +56,7 @@ where
     /// Parse a function definition: int name(void) { ... }
     fn parse_function(&mut self) -> Result<FuncDef<'a>, CompilerParseError> {
         // Expect return type
-        let return_type = self.expect_type_def()?;
+        let return_type = self.expect_type()?;
 
         // Function name
         let name = self.expect_identifier()?;
@@ -213,7 +213,7 @@ where
         }
     }
 
-    fn expect_type_def(&mut self) -> Result<Type, CompilerParseError> {
+    fn expect_type(&mut self) -> Result<Type, CompilerParseError> {
         match self.lexer.peek() {
             Some(Ok(Token {
                 kind: t!("int"), ..
