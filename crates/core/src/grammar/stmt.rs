@@ -1,5 +1,6 @@
-use compiler_macros::statement_enum;
 use std::borrow::Cow;
+
+use compiler_macros::statement_enum;
 
 use crate::grammar::{Expression, Type};
 

@@ -4,7 +4,8 @@ use regex::Regex;
 
 use crate::{
     error::{CompilerError, IntoCompilerError},
-    lexer_base::{LexError, Span, Token, TokenType, token::ALL_KEYWORDS},
+    grammar::*,
+    lexer_base::LexError,
     t,
 };
 

@@ -1,4 +1,4 @@
-use crate::{lexer_base::TokenType, t};
+use crate::{grammar::TokenType, t};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Type {

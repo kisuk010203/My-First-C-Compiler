@@ -2,8 +2,8 @@ use std::{borrow::Cow, iter::Peekable};
 
 use crate::{
     error::IntoCompilerError,
-    grammar::{BinaryOp, *},
-    lexer_base::{CompilerLexError, Lexer, Span, Token, TokenType},
+    grammar::*,
+    lexer_base::{CompilerLexError, Lexer},
     parser_base::{CompilerParseError, ParseError},
     t,
 };

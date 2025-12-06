@@ -2,7 +2,8 @@ use thiserror::Error;
 
 use crate::{
     error::{CompilerError, IntoCompilerError},
-    lexer_base::{LexError, TokenType},
+    grammar::TokenType,
+    lexer_base::LexError,
 };
 
 #[derive(Debug, Error, Clone, PartialEq)]

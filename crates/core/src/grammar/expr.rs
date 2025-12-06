@@ -1,5 +1,7 @@
 use std::borrow::Cow;
 
+use crate::grammar::*;
+
 #[derive(Debug, Clone)]
 pub enum Expression<'a> {
     Constant(i32),
@@ -44,8 +46,7 @@ impl BinaryOp {
         }
     }
 
-    pub fn from_token_type(token: &crate::lexer_base::TokenType) -> Option<Self> {
-        use crate::lexer_base::{StaticToken, TokenType};
+    pub fn from_token_type(token: &TokenType) -> Option<Self> {
         match token {
             TokenType::Static(StaticToken::Plus) => Some(BinaryOp::Add),
             TokenType::Static(StaticToken::Minus) => Some(BinaryOp::Subtract),

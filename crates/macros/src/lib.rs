@@ -2,11 +2,10 @@
 //!
 //! Currently provides:
 //!
-//! - `statement_enum! { ... }`
-//!   A function-like macro that:
+//! - `statement_enum! { ... }` A function-like macro that:
 //!     * re-emits the given statement structs,
-//!     * generates a fixed enum `Statement<...>` whose variants wrap
-//!       those structs, and
+//!     * generates a fixed enum `Statement<...>` whose variants wrap those
+//!       structs, and
 //!     * generates `From<Struct> for Statement` implementations.
 //!
 //! Usage example:
@@ -59,8 +58,8 @@
 //!
 //! Conventions:
 //! - The enum name is fixed to `Statement`.
-//! - Struct names must end with `Stmt`. The enum variant name is obtained
-//!   by stripping the `Stmt` suffix, e.g. `BlockStmt` -> `Block`.
+//! - Struct names must end with `Stmt`. The enum variant name is obtained by
+//!   stripping the `Stmt` suffix, e.g. `BlockStmt` -> `Block`.
 
 extern crate proc_macro;
 
@@ -88,8 +87,8 @@ use syn::{
 ///
 /// The macro will:
 /// - Re-emit all provided structs as-is.
-/// - Generate a `Statement` enum whose generics and visibility are taken
-///   from the first struct's declaration.
+/// - Generate a `Statement` enum whose generics and visibility are taken from
+///   the first struct's declaration.
 /// - Generate enum variants whose names are derived by stripping the `Stmt`
 ///   suffix from each struct name, e.g. `BlockStmt` -> `Block`.
 /// - Generate `From<Struct> for Statement` implementations for each struct.
@@ -115,8 +114,8 @@ impl Parse for StatementEnumInput {
 ///
 /// Conventions:
 /// - The enum name is fixed: `Statement`.
-/// - The enum visibility and generics are derived from the first struct.
-///   For example, if the first struct is:
+/// - The enum visibility and generics are derived from the first struct. For
+///   example, if the first struct is:
 ///
 ///   ```ignore
 ///   pub struct BlockStmt<'a> { .. }
@@ -128,8 +127,8 @@ impl Parse for StatementEnumInput {
 ///   pub enum Statement<'a> { .. }
 ///   ```
 ///
-/// - Each struct name must end with `Stmt`. The enum variant name is
-///   derived by stripping the `Stmt` suffix:
+/// - Each struct name must end with `Stmt`. The enum variant name is derived by
+///   stripping the `Stmt` suffix:
 ///     * `BlockStmt`   -> `Statement::Block(BlockStmt<'a>)`
 ///     * `DoWhileStmt` -> `Statement::DoWhile(DoWhileStmt<'a>)`
 #[proc_macro]
