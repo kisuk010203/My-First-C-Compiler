@@ -1,9 +1,9 @@
-use colored::Colorize;
-use my_first_compiler::lexer_base;
-use my_first_compiler::parser_base;
-
 use std::fs;
+
+use colored::Colorize;
+use compiler_core::{lexer_base, parser_base};
 use walkdir::WalkDir;
+
 fn main() {
     let test_root = "tests/Ch1";
     for entry in WalkDir::new(test_root)

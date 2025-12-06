@@ -1,11 +1,12 @@
 use std::sync::LazyLock;
 
+use regex::Regex;
+
 use crate::{
     error::{CompilerError, IntoCompilerError},
     lexer_base::{LexError, Span, Token, TokenType, token::ALL_KEYWORDS},
     t,
 };
-use regex::Regex;
 
 static WORD_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^\w+").unwrap());
 static INTEGER_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^[0-9]+$").unwrap());

@@ -9,6 +9,8 @@ pub enum StaticToken {
     Return,
     If,
     Else,
+    While,
+    Do,
 
     // Symbols
     Semicolon,
@@ -41,6 +43,8 @@ impl StaticToken {
             StaticToken::Return => "return",
             StaticToken::If => "if",
             StaticToken::Else => "else",
+            StaticToken::While => "while",
+            StaticToken::Do => "do",
 
             StaticToken::Semicolon => ";",
             StaticToken::LParen => "(",
@@ -89,7 +93,8 @@ impl Span {
         }
     }
 
-    /// Returns a `Span` representing the end-of-file position of the given source.
+    /// Returns a `Span` representing the end-of-file position of the given
+    /// source.
     pub fn eof(src: &str) -> Self {
         let len = src.len();
 

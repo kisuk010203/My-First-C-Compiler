@@ -1,5 +1,6 @@
 mod _type;
 mod expr;
+mod mac;
 mod stmt;
 
 pub use _type::Type;

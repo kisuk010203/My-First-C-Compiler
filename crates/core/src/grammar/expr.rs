@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Expression<'a> {
     Constant(i32),
     Variable(Cow<'a, str>),
@@ -16,7 +16,7 @@ pub enum Expression<'a> {
     },
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum BinaryOp {
     Add,
     Subtract,
@@ -62,7 +62,7 @@ impl BinaryOp {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum UnaryOp {
     Negate,
     Not,

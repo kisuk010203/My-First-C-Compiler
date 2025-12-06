@@ -21,6 +21,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "compiler_core"
+version = "0.1.0"
+dependencies = [
+ "colored",
+ "compiler_macros",
+ "regex",
+ "thiserror",
+ "walkdir",
+]
+
+[[package]]
+name = "compiler_macros"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "memchr"
 version = "2.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -31,8 +51,7 @@ name = "my_first_compiler"
 version = "0.1.0"
 dependencies = [
  "colored",
- "regex",
- "thiserror",
+ "compiler_core",
  "walkdir",
 ]
 

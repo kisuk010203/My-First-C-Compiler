@@ -1,6 +1,6 @@
+use std::{error::Error, fmt};
+
 use crate::lexer_base::Span;
-use std::error::Error;
-use std::fmt;
 
 /// A compiler error with location information
 #[derive(Debug, Clone)]

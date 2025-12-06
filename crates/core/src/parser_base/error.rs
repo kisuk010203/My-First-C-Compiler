@@ -1,8 +1,9 @@
+use thiserror::Error;
+
 use crate::{
     error::{CompilerError, IntoCompilerError},
     lexer_base::{LexError, TokenType},
 };
-use thiserror::Error;
 
 #[derive(Debug, Error, Clone, PartialEq)]
 pub enum ParseError {

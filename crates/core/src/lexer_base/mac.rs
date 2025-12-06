@@ -64,4 +64,10 @@ macro_rules! t {
     ("else") => {
         $crate::lexer_base::TokenType::Static($crate::lexer_base::StaticToken::Else)
     };
+    ("while") => {
+        $crate::lexer_base::TokenType::Static($crate::lexer_base::StaticToken::While)
+    };
+    ("do") => {
+        $crate::lexer_base::TokenType::Static($crate::lexer_base::StaticToken::Do)
+    };
 }

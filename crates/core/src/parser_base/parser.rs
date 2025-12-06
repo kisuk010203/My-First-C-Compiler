@@ -1,15 +1,10 @@
-use std::borrow::Cow;
-use std::iter::Peekable;
+use std::{borrow::Cow, iter::Peekable};
 
-use crate::parser_base::BinaryOp;
-use crate::parser_base::grammar::ReturnStmt;
 use crate::{
     error::IntoCompilerError,
+    grammar::{BinaryOp, *},
     lexer_base::{CompilerLexError, Lexer, Span, Token, TokenType},
-    parser_base::{
-        Block, CompilerParseError, Expression, FuncDef, ParseError, Program, Statement, UnaryOp,
-        grammar::Type,
-    },
+    parser_base::{CompilerParseError, ParseError},
     t,
 };
 
@@ -69,7 +64,7 @@ where
         self.expect(t!(")"))?;
 
         // Function body (block)
-        let body = self.parse_block()?;
+        let body = self.parse_block_statement()?;
 
         Ok(FuncDef {
             return_type,
@@ -82,11 +77,15 @@ where
     /// Parse a statement
     fn parse_statement(&mut self) -> Result<Statement<'a>, CompilerParseError> {
         match self.peek_token()? {
+            Some(Token { kind: t!("{"), .. }) => self.parse_block_statement().map(Into::into),
+            Some(Token { kind: t!("do"), .. }) => self.parse_do_while_statement().map(Into::into),
+            Some(Token { kind: t!("if"), .. }) => self.parse_if_statement().map(Into::into),
             Some(Token {
                 kind: t!("return"), ..
-            }) => self.parse_return_statement(),
-            Some(Token { kind: t!("if"), .. }) => self.parse_if_statement(),
-            Some(Token { kind: t!("{"), .. }) => self.parse_block().map(|b| Statement::Block(b)),
+            }) => self.parse_return_statement().map(Into::into),
+            Some(Token {
+                kind: t!("while"), ..
+            }) => self.parse_while_statement().map(Into::into),
             Some(token) => {
                 Err(ParseError::expected_statement(token.kind.clone()).with_span(token.span))
             }
@@ -95,7 +94,7 @@ where
     }
 
     /// Parse a block: { statement* }
-    fn parse_block(&mut self) -> Result<Block<'a>, CompilerParseError> {
+    fn parse_block_statement(&mut self) -> Result<BlockStmt<'a>, CompilerParseError> {
         self.expect(t!("{"))?;
 
         let mut statements = Vec::new();
@@ -115,19 +114,24 @@ where
         }
 
         self.expect(t!("}"))?;
-        Ok(Block { statements })
+        Ok(BlockStmt { statements })
     }
 
-    /// Parse a return statement: return expr;
-    fn parse_return_statement(&mut self) -> Result<Statement<'a>, CompilerParseError> {
-        self.expect(t!("return"))?;
-        let expr = self.parse_expression()?;
-        self.expect(t!(";"))?;
-        Ok(Statement::Return(ReturnStmt { expr }))
+    fn parse_do_while_statement(&mut self) -> Result<DoWhileStmt<'a>, CompilerParseError> {
+        self.expect(t!("do"))?;
+        let body = self.parse_statement()?;
+        self.expect(t!("while"))?;
+        self.expect(t!("("))?;
+        let condition = self.parse_expression()?;
+        self.expect(t!(")"))?;
+        Ok(DoWhileStmt {
+            body: Box::new(body),
+            cond: condition,
+        })
     }
 
     /// Parse an if statement: if (condition) { body } else { body }
-    fn parse_if_statement(&mut self) -> Result<Statement<'a>, CompilerParseError> {
+    fn parse_if_statement(&mut self) -> Result<IfStmt<'a>, CompilerParseError> {
         self.expect(t!("if"))?;
         self.expect(t!("("))?;
         let condition = self.parse_expression()?;
@@ -138,7 +142,31 @@ where
             .map(|_| self.parse_statement())
             .transpose()?;
 
-        Ok(Statement::if_stmt(condition, then_block, else_block))
+        Ok(IfStmt {
+            cond: condition,
+            then_block: Box::new(then_block),
+            else_block: else_block.map(Box::new),
+        })
+    }
+
+    /// Parse a return statement: return expr;
+    fn parse_return_statement(&mut self) -> Result<ReturnStmt<'a>, CompilerParseError> {
+        self.expect(t!("return"))?;
+        let expr = self.parse_expression()?;
+        self.expect(t!(";"))?;
+        Ok(ReturnStmt { expr })
+    }
+
+    fn parse_while_statement(&mut self) -> Result<WhileStmt<'a>, CompilerParseError> {
+        self.expect(t!("while"))?;
+        self.expect(t!("("))?;
+        let cond = self.parse_expression()?;
+        self.expect(t!(")"))?;
+        let body = self.parse_statement()?;
+        Ok(WhileStmt {
+            cond,
+            body: Box::new(body),
+        })
     }
 
     /// Parse an expression
@@ -284,8 +312,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::lexer_base::Lexer;
-    use crate::parser_base::grammar::Type;
+    use crate::{grammar::Type, lexer_base::Lexer};
 
     fn parse_program(input: &str) -> Result<Program<'_>, CompilerParseError> {
         let lexer = Lexer::new(input);
@@ -422,7 +449,7 @@ mod tests {
             Statement::Return(ReturnStmt {
                 expr: Expression::Binary { op, lhs, rhs },
             }) => {
-                assert!(matches!(op, crate::parser_base::BinaryOp::Add));
+                assert!(matches!(op, BinaryOp::Add));
                 assert!(matches!(**lhs, Expression::Constant(1)));
                 assert!(matches!(**rhs, Expression::Constant(2)));
             }
@@ -440,7 +467,7 @@ mod tests {
             Statement::Return(ReturnStmt {
                 expr: Expression::Binary { op, lhs, rhs },
             }) => {
-                assert!(matches!(op, crate::parser_base::BinaryOp::Subtract));
+                assert!(matches!(op, BinaryOp::Subtract));
                 assert!(matches!(**lhs, Expression::Constant(5)));
                 assert!(matches!(**rhs, Expression::Constant(3)));
             }
@@ -458,7 +485,7 @@ mod tests {
             Statement::Return(ReturnStmt {
                 expr: Expression::Binary { op, lhs, rhs },
             }) => {
-                assert!(matches!(op, crate::parser_base::BinaryOp::Multiply));
+                assert!(matches!(op, BinaryOp::Multiply));
                 assert!(matches!(**lhs, Expression::Constant(3)));
                 assert!(matches!(**rhs, Expression::Constant(4)));
             }
@@ -476,7 +503,7 @@ mod tests {
             Statement::Return(ReturnStmt {
                 expr: Expression::Binary { op, lhs, rhs },
             }) => {
-                assert!(matches!(op, crate::parser_base::BinaryOp::Divide));
+                assert!(matches!(op, BinaryOp::Divide));
                 assert!(matches!(**lhs, Expression::Constant(10)));
                 assert!(matches!(**rhs, Expression::Constant(2)));
             }
@@ -496,12 +523,12 @@ mod tests {
                 expr: Expression::Binary { op, lhs, rhs },
             }) => {
                 // Top level should be addition
-                assert!(matches!(op, crate::parser_base::BinaryOp::Add));
+                assert!(matches!(op, BinaryOp::Add));
                 assert!(matches!(**lhs, Expression::Constant(2)));
                 // Right side should be multiplication
                 match &**rhs {
                     Expression::Binary { op, lhs, rhs } => {
-                        assert!(matches!(op, crate::parser_base::BinaryOp::Multiply));
+                        assert!(matches!(op, BinaryOp::Multiply));
                         assert!(matches!(**lhs, Expression::Constant(3)));
                         assert!(matches!(**rhs, Expression::Constant(4)));
                     }
@@ -524,12 +551,12 @@ mod tests {
                 expr: Expression::Binary { op, lhs, rhs },
             }) => {
                 // Top level should be subtraction
-                assert!(matches!(op, crate::parser_base::BinaryOp::Subtract));
+                assert!(matches!(op, BinaryOp::Subtract));
                 assert!(matches!(**lhs, Expression::Constant(10)));
                 // Right side should be division
                 match &**rhs {
                     Expression::Binary { op, lhs, rhs } => {
-                        assert!(matches!(op, crate::parser_base::BinaryOp::Divide));
+                        assert!(matches!(op, BinaryOp::Divide));
                         assert!(matches!(**lhs, Expression::Constant(6)));
                         assert!(matches!(**rhs, Expression::Constant(2)));
                     }
@@ -552,12 +579,12 @@ mod tests {
                 expr: Expression::Binary { op, lhs, rhs },
             }) => {
                 // Top level should be subtraction
-                assert!(matches!(op, crate::parser_base::BinaryOp::Subtract));
+                assert!(matches!(op, BinaryOp::Subtract));
                 assert!(matches!(**rhs, Expression::Constant(1)));
                 // Left side should be subtraction (5 - 3)
                 match &**lhs {
                     Expression::Binary { op, lhs, rhs } => {
-                        assert!(matches!(op, crate::parser_base::BinaryOp::Subtract));
+                        assert!(matches!(op, BinaryOp::Subtract));
                         assert!(matches!(**lhs, Expression::Constant(5)));
                         assert!(matches!(**rhs, Expression::Constant(3)));
                     }
@@ -580,13 +607,13 @@ mod tests {
                 expr: Expression::Binary { op, lhs, rhs },
             }) => {
                 // Top level should be multiplication
-                assert!(matches!(op, crate::parser_base::BinaryOp::Multiply));
+                assert!(matches!(op, BinaryOp::Multiply));
                 assert!(matches!(**rhs, Expression::Constant(4)));
                 // Left side should be grouped expression
                 match &**lhs {
                     Expression::Grouped(inner) => match &**inner {
                         Expression::Binary { op, lhs, rhs } => {
-                            assert!(matches!(op, crate::parser_base::BinaryOp::Add));
+                            assert!(matches!(op, BinaryOp::Add));
                             assert!(matches!(**lhs, Expression::Constant(2)));
                             assert!(matches!(**rhs, Expression::Constant(3)));
                         }
@@ -609,7 +636,7 @@ mod tests {
             Statement::Return(ReturnStmt {
                 expr: Expression::Unary { op, expr },
             }) => {
-                assert!(matches!(op, crate::parser_base::UnaryOp::Negate));
+                assert!(matches!(op, UnaryOp::Negate));
                 assert!(matches!(**expr, Expression::Constant(5)));
             }
             _ => panic!("Expected unary negation"),
@@ -627,11 +654,11 @@ mod tests {
             Statement::Return(ReturnStmt {
                 expr: Expression::Binary { op, lhs, rhs },
             }) => {
-                assert!(matches!(op, crate::parser_base::BinaryOp::Add));
+                assert!(matches!(op, BinaryOp::Add));
                 assert!(matches!(**rhs, Expression::Constant(5)));
                 match &**lhs {
                     Expression::Unary { op, expr } => {
-                        assert!(matches!(op, crate::parser_base::UnaryOp::Negate));
+                        assert!(matches!(op, UnaryOp::Negate));
                         assert!(matches!(**expr, Expression::Constant(3)));
                     }
                     _ => panic!("Expected unary negation on left side"),
@@ -647,7 +674,8 @@ mod tests {
         let input = "int main(void) { return 2 + 3 * 4 - 5 / (1 + 1); }";
         let result = parse_program(input);
         assert!(result.is_ok());
-        // Just verify it parses without panicking - detailed structure check would be very verbose
+        // Just verify it parses without panicking - detailed structure check
+        // would be very verbose
     }
 
     // === Comparison Operator Tests ===
@@ -662,7 +690,7 @@ mod tests {
             Statement::Return(ReturnStmt {
                 expr: Expression::Binary { op, lhs, rhs },
             }) => {
-                assert!(matches!(op, crate::parser_base::BinaryOp::LT));
+                assert!(matches!(op, BinaryOp::LT));
                 assert!(matches!(**lhs, Expression::Constant(1)));
                 assert!(matches!(**rhs, Expression::Constant(2)));
             }
@@ -680,7 +708,7 @@ mod tests {
             Statement::Return(ReturnStmt {
                 expr: Expression::Binary { op, lhs, rhs },
             }) => {
-                assert!(matches!(op, crate::parser_base::BinaryOp::GT));
+                assert!(matches!(op, BinaryOp::GT));
                 assert!(matches!(**lhs, Expression::Constant(5)));
                 assert!(matches!(**rhs, Expression::Constant(3)));
             }
@@ -698,7 +726,7 @@ mod tests {
             Statement::Return(ReturnStmt {
                 expr: Expression::Binary { op, lhs, rhs },
             }) => {
-                assert!(matches!(op, crate::parser_base::BinaryOp::LTE));
+                assert!(matches!(op, BinaryOp::LTE));
                 assert!(matches!(**lhs, Expression::Constant(1)));
                 assert!(matches!(**rhs, Expression::Constant(2)));
             }
@@ -716,7 +744,7 @@ mod tests {
             Statement::Return(ReturnStmt {
                 expr: Expression::Binary { op, lhs, rhs },
             }) => {
-                assert!(matches!(op, crate::parser_base::BinaryOp::GTE));
+                assert!(matches!(op, BinaryOp::GTE));
                 assert!(matches!(**lhs, Expression::Constant(5)));
                 assert!(matches!(**rhs, Expression::Constant(3)));
             }
@@ -734,7 +762,7 @@ mod tests {
             Statement::Return(ReturnStmt {
                 expr: Expression::Binary { op, lhs, rhs },
             }) => {
-                assert!(matches!(op, crate::parser_base::BinaryOp::EQ));
+                assert!(matches!(op, BinaryOp::EQ));
                 assert!(matches!(**lhs, Expression::Constant(1)));
                 assert!(matches!(**rhs, Expression::Constant(1)));
             }
@@ -752,7 +780,7 @@ mod tests {
             Statement::Return(ReturnStmt {
                 expr: Expression::Binary { op, lhs, rhs },
             }) => {
-                assert!(matches!(op, crate::parser_base::BinaryOp::NEQ));
+                assert!(matches!(op, BinaryOp::NEQ));
                 assert!(matches!(**lhs, Expression::Constant(1)));
                 assert!(matches!(**rhs, Expression::Constant(2)));
             }
@@ -772,12 +800,12 @@ mod tests {
                 expr: Expression::Binary { op, lhs, rhs },
             }) => {
                 // Top level should be less than
-                assert!(matches!(op, crate::parser_base::BinaryOp::LT));
+                assert!(matches!(op, BinaryOp::LT));
 
                 // Left side should be (1 + 2)
                 match &**lhs {
                     Expression::Binary { op, lhs, rhs } => {
-                        assert!(matches!(op, crate::parser_base::BinaryOp::Add));
+                        assert!(matches!(op, BinaryOp::Add));
                         assert!(matches!(**lhs, Expression::Constant(1)));
                         assert!(matches!(**rhs, Expression::Constant(2)));
                     }
@@ -787,7 +815,7 @@ mod tests {
                 // Right side should be (3 * 4)
                 match &**rhs {
                     Expression::Binary { op, lhs, rhs } => {
-                        assert!(matches!(op, crate::parser_base::BinaryOp::Multiply));
+                        assert!(matches!(op, BinaryOp::Multiply));
                         assert!(matches!(**lhs, Expression::Constant(3)));
                         assert!(matches!(**rhs, Expression::Constant(4)));
                     }
@@ -810,12 +838,12 @@ mod tests {
                 expr: Expression::Binary { op, lhs, rhs },
             }) => {
                 // Top level should be equality
-                assert!(matches!(op, crate::parser_base::BinaryOp::EQ));
+                assert!(matches!(op, BinaryOp::EQ));
 
                 // Left side should be (1 < 2)
                 match &**lhs {
                     Expression::Binary { op, .. } => {
-                        assert!(matches!(op, crate::parser_base::BinaryOp::LT));
+                        assert!(matches!(op, BinaryOp::LT));
                     }
                     _ => panic!("Expected less than on left side"),
                 }
@@ -823,7 +851,7 @@ mod tests {
                 // Right side should be (3 < 4)
                 match &**rhs {
                     Expression::Binary { op, .. } => {
-                        assert!(matches!(op, crate::parser_base::BinaryOp::LT));
+                        assert!(matches!(op, BinaryOp::LT));
                     }
                     _ => panic!("Expected less than on right side"),
                 }

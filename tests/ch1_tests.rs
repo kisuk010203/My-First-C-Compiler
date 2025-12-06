@@ -1,5 +1,6 @@
-use my_first_compiler::{error::CompilerError, lexer_base, parser_base};
 use std::fs;
+
+use compiler_core::{error::CompilerError, lexer_base, parser_base};
 use walkdir::WalkDir;
 
 fn test_file(path: &str) -> Result<(), CompilerError<parser_base::ParseError>> {
