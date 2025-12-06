@@ -1,0 +1,11 @@
+[package]
+name = "compiler_core"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+regex = "1.12.2"
+thiserror = "2.0.17"
+
+# proc-macro crate 의존
+compiler_macros = { path = "../macros" }

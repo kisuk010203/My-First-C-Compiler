@@ -1,8 +1,7 @@
-use colored::Colorize;
-use my_first_compiler::lexer_base::lexer;
-use my_first_compiler::parser_base::parser;
-
 use std::fs;
+
+use colored::Colorize;
+use compiler_core::{lexer_base, parser_base};
 use walkdir::WalkDir;
 
 fn main() {
@@ -18,12 +17,12 @@ fn main() {
 
         println!("Lexing file: {}", path_str.green());
         let input = fs::read_to_string(path_str).expect("failed to load test input");
-        let lexer = lexer::Lexer::new(input.as_str());
+        let lexer = lexer_base::Lexer::new(input.as_str());
 
         println!("Parsing tokens...");
-        match parser::Parser::new(lexer).parse() {
+        match parser_base::Parser::new(lexer).parse() {
             Err(e) => {
-                println!("Parser Error: {}", e.red());
+                println!("Parser Error: {}", format!("{}", e).red());
             }
             Ok(ast) => {
                 println!("Parsed AST: {:?}", ast);

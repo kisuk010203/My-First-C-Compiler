@@ -3,7 +3,13 @@ name = "my_first_compiler"
 version = "0.1.0"
 edition = "2024"
 
+[workspace]
+members = [
+    "crates/core",
+    "crates/macros",
+]
+
 [dependencies]
+compiler_core = { path = "crates/core" }
 colored = "3.0.0"
-regex = "1.12.2"
 walkdir = "2.5.0"
