@@ -24,11 +24,9 @@ dependencies = [
 name = "compiler_core"
 version = "0.1.0"
 dependencies = [
- "colored",
  "compiler_macros",
  "regex",
  "thiserror",
- "walkdir",
 ]
 
 [[package]]
