@@ -7,61 +7,10 @@ use crate::{
 };
 
 impl<'a> Parser<'a> {
-    /// Parse an expression
+    /// Parse an expression using unified Pratt parser
     pub(super) fn parse_expression(&mut self) -> Result<Expression<'a>, CompilerParseError> {
-        self.parse_assignment_expression()
-    }
-
-    /// Parse an assignment expression (right-associative, lowest precedence)
-    fn parse_assignment_expression(&mut self) -> Result<Expression<'a>, CompilerParseError> {
-        // First, parse the left-hand side (could be any expression)
-        let lhs = self.parse_binary_expression()?;
-
-        // Check if there's an assignment operator
-        if let Some(assign_op) = self.peek_assignment_op()? {
-            // Consume the assignment operator
-            self.next_token()?;
-
-            // Recursively parse the right-hand side (right-associative)
-            let rhs = self.parse_assignment_expression()?;
-
-            return Ok(Expression::Assignment {
-                op: assign_op,
-                lvalue: Box::new(lhs),
-                rvalue: Box::new(rhs),
-            });
-        }
-
-        // No assignment operator, just return the expression
-        Ok(lhs)
-    }
-
-    /// Parse binary expressions (using Pratt parser)
-    fn parse_binary_expression(&mut self) -> Result<Expression<'a>, CompilerParseError> {
         let base = self.parse_unit_expression()?;
         self.parse_infix_operator(base, 0)
-    }
-
-    /// Helper function to check for assignment operators
-    fn peek_assignment_op(&mut self) -> Result<Option<AssignOp>, CompilerParseError> {
-        match self.peek_token()? {
-            Some(Token { kind: t!("="), .. }) => Ok(Some(AssignOp::Assign)),
-            Some(Token { kind: t!("+="), .. }) => Ok(Some(AssignOp::PlusAssign)),
-            Some(Token { kind: t!("-="), .. }) => Ok(Some(AssignOp::MinusAssign)),
-            Some(Token { kind: t!("*="), .. }) => Ok(Some(AssignOp::MulAssign)),
-            Some(Token { kind: t!("/="), .. }) => Ok(Some(AssignOp::DivAssign)),
-            Some(Token { kind: t!("%="), .. }) => Ok(Some(AssignOp::ModAssign)),
-            Some(Token { kind: t!("&="), .. }) => Ok(Some(AssignOp::AndAssign)),
-            Some(Token { kind: t!("|="), .. }) => Ok(Some(AssignOp::OrAssign)),
-            Some(Token { kind: t!("^="), .. }) => Ok(Some(AssignOp::XorAssign)),
-            Some(Token {
-                kind: t!("<<="), ..
-            }) => Ok(Some(AssignOp::LShiftAssign)),
-            Some(Token {
-                kind: t!(">>="), ..
-            }) => Ok(Some(AssignOp::RShiftAssign)),
-            _ => Ok(None),
-        }
     }
 
     pub(super) fn parse_unit_expression(&mut self) -> Result<Expression<'a>, CompilerParseError> {
@@ -107,28 +56,56 @@ impl<'a> Parser<'a> {
         mut lhs: Expression<'a>,
         min_bp: u8,
     ) -> Result<Expression<'a>, CompilerParseError> {
-        while let Some(op) = self
-            .peek_token()?
-            .and_then(|t| BinaryOp::from_token_type(&t.kind))
-        {
-            let (left_bp, right_bp) = op.infix_binding_power();
+        loop {
+            let token = match self.peek_token()? {
+                Some(t) => t,
+                None => break,
+            };
 
-            // If the binding power is too low, stop
-            if left_bp < min_bp {
-                break;
+            // Try to parse as binary operator
+            if let Some(op) = BinaryOp::from_token_type(&token.kind) {
+                let (left_bp, right_bp) = op.infix_binding_power();
+
+                if left_bp < min_bp {
+                    break;
+                }
+
+                self.next_token()?;
+
+                let rhs = self.parse_unit_expression()?;
+                let rhs = self.parse_infix_operator(rhs, right_bp)?;
+
+                lhs = Expression::Binary {
+                    op,
+                    lhs: Box::new(lhs),
+                    rhs: Box::new(rhs),
+                };
+                continue;
             }
 
-            // Consume the operator token
-            self.next_token()?;
+            // Try to parse as assignment operator
+            if let Some(op) = AssignOp::from_token_type(&token.kind) {
+                let (left_bp, right_bp) = op.infix_binding_power();
 
-            let rhs = self.parse_unit_expression()?;
-            let rhs = self.parse_infix_operator(rhs, right_bp)?;
+                if left_bp < min_bp {
+                    break;
+                }
 
-            lhs = Expression::Binary {
-                op,
-                lhs: Box::new(lhs),
-                rhs: Box::new(rhs),
-            };
+                self.next_token()?;
+
+                let rhs = self.parse_unit_expression()?;
+                let rhs = self.parse_infix_operator(rhs, right_bp)?;
+
+                lhs = Expression::Assignment {
+                    op,
+                    lvalue: Box::new(lhs),
+                    rvalue: Box::new(rhs),
+                };
+                continue;
+            }
+
+            // No operator found, stop
+            break;
         }
 
         Ok(lhs)

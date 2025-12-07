@@ -21,6 +21,10 @@ pub enum Expression<'a> {
         lvalue: Box<Expression<'a>>,
         rvalue: Box<Expression<'a>>,
     },
+    FunctionCall {
+        callee: Box<Expression<'a>>,
+        args: Vec<Expression<'a>>,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -41,13 +45,14 @@ impl BinaryOp {
     pub fn infix_binding_power(&self) -> (u8, u8) {
         match self {
             // Multiplicative operators (highest precedence)
-            BinaryOp::Multiply | BinaryOp::Divide => (7, 8),
+            BinaryOp::Multiply | BinaryOp::Divide => (11, 12),
             // Additive operators
-            BinaryOp::Add | BinaryOp::Subtract => (5, 6),
+            BinaryOp::Add | BinaryOp::Subtract => (9, 10),
             // Relational operators
-            BinaryOp::LT | BinaryOp::GT | BinaryOp::LTE | BinaryOp::GTE => (3, 4),
-            // Equality operators (lowest precedence)
-            BinaryOp::EQ | BinaryOp::NEQ => (1, 2),
+            BinaryOp::LT | BinaryOp::GT | BinaryOp::LTE | BinaryOp::GTE => (7, 8),
+            // Equality operators
+            BinaryOp::EQ | BinaryOp::NEQ => (5, 6),
+            // Assignment has lower precedence (handled separately)
         }
     }
 
@@ -90,6 +95,16 @@ pub enum AssignOp {
 }
 
 impl AssignOp {
+    /// Returns binding power for assignment operators
+    /// Assignment is right-associative, so right BP is lower than left BP
+    /// This gives it the lowest precedence of all operators
+    pub fn infix_binding_power(&self) -> (u8, u8) {
+        // All assignment operators have the same precedence
+        // Right-associative: (left_bp=1, right_bp=0)
+        // This means: if we see another assignment on the right, we parse it first
+        (1, 0)
+    }
+
     pub fn from_token_type(token: &TokenType) -> Option<Self> {
         match token {
             t!("=") => Some(AssignOp::Assign),
