@@ -1,12 +1,11 @@
 use std::borrow::Cow;
 
+use super::Parser;
 use crate::{
     error::IntoCompilerError,
     grammar::*,
     parser_base::{CompilerParseError, ParseError},
 };
-
-use super::Parser;
 
 impl<'a> Parser<'a> {
     /// Expect a specific token
@@ -83,6 +82,7 @@ impl<'a> Parser<'a> {
         }
     }
 
+    #[allow(dead_code)]
     pub(super) fn eat_when<F>(&mut self, when: F) -> Result<bool, CompilerParseError>
     where
         F: FnOnce(&TokenType<'a>) -> bool,

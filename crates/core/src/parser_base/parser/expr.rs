@@ -1,3 +1,4 @@
+use super::Parser;
 use crate::{
     error::IntoCompilerError,
     grammar::*,
@@ -5,13 +6,62 @@ use crate::{
     t,
 };
 
-use super::Parser;
-
 impl<'a> Parser<'a> {
     /// Parse an expression
     pub(super) fn parse_expression(&mut self) -> Result<Expression<'a>, CompilerParseError> {
+        self.parse_assignment_expression()
+    }
+
+    /// Parse an assignment expression (right-associative, lowest precedence)
+    fn parse_assignment_expression(&mut self) -> Result<Expression<'a>, CompilerParseError> {
+        // First, parse the left-hand side (could be any expression)
+        let lhs = self.parse_binary_expression()?;
+
+        // Check if there's an assignment operator
+        if let Some(assign_op) = self.peek_assignment_op()? {
+            // Consume the assignment operator
+            self.next_token()?;
+
+            // Recursively parse the right-hand side (right-associative)
+            let rhs = self.parse_assignment_expression()?;
+
+            return Ok(Expression::Assignment {
+                op: assign_op,
+                lvalue: Box::new(lhs),
+                rvalue: Box::new(rhs),
+            });
+        }
+
+        // No assignment operator, just return the expression
+        Ok(lhs)
+    }
+
+    /// Parse binary expressions (using Pratt parser)
+    fn parse_binary_expression(&mut self) -> Result<Expression<'a>, CompilerParseError> {
         let base = self.parse_unit_expression()?;
         self.parse_infix_operator(base, 0)
+    }
+
+    /// Helper function to check for assignment operators
+    fn peek_assignment_op(&mut self) -> Result<Option<AssignOp>, CompilerParseError> {
+        match self.peek_token()? {
+            Some(Token { kind: t!("="), .. }) => Ok(Some(AssignOp::Assign)),
+            Some(Token { kind: t!("+="), .. }) => Ok(Some(AssignOp::PlusAssign)),
+            Some(Token { kind: t!("-="), .. }) => Ok(Some(AssignOp::MinusAssign)),
+            Some(Token { kind: t!("*="), .. }) => Ok(Some(AssignOp::MulAssign)),
+            Some(Token { kind: t!("/="), .. }) => Ok(Some(AssignOp::DivAssign)),
+            Some(Token { kind: t!("%="), .. }) => Ok(Some(AssignOp::ModAssign)),
+            Some(Token { kind: t!("&="), .. }) => Ok(Some(AssignOp::AndAssign)),
+            Some(Token { kind: t!("|="), .. }) => Ok(Some(AssignOp::OrAssign)),
+            Some(Token { kind: t!("^="), .. }) => Ok(Some(AssignOp::XorAssign)),
+            Some(Token {
+                kind: t!("<<="), ..
+            }) => Ok(Some(AssignOp::LShiftAssign)),
+            Some(Token {
+                kind: t!(">>="), ..
+            }) => Ok(Some(AssignOp::RShiftAssign)),
+            _ => Ok(None),
+        }
     }
 
     pub(super) fn parse_unit_expression(&mut self) -> Result<Expression<'a>, CompilerParseError> {
@@ -470,5 +520,274 @@ mod tests {
     fn test_error_empty_grouped_expression() {
         let result = parse_expr("()");
         assert!(result.is_err());
+    }
+
+    // === Assignment Expression Tests ===
+
+    #[test]
+    fn test_parse_simple_assignment() {
+        let result = parse_expr("x = 5");
+        assert!(result.is_ok());
+        match result.unwrap() {
+            Expression::Assignment { op, lvalue, rvalue } => {
+                assert!(matches!(op, AssignOp::Assign));
+                match *lvalue {
+                    Expression::Variable(name) => assert_eq!(name, "x"),
+                    _ => panic!("Expected variable on left side"),
+                }
+                assert!(matches!(*rvalue, Expression::Constant(5)));
+            }
+            _ => panic!("Expected assignment expression"),
+        }
+    }
+
+    #[test]
+    fn test_parse_right_associative_assignment() {
+        // a = b = c should be parsed as a = (b = c)
+        let result = parse_expr("a = b = c");
+        assert!(result.is_ok());
+        match result.unwrap() {
+            Expression::Assignment { op, lvalue, rvalue } => {
+                assert!(matches!(op, AssignOp::Assign));
+                match *lvalue {
+                    Expression::Variable(name) => assert_eq!(name, "a"),
+                    _ => panic!("Expected variable 'a' on left side"),
+                }
+                // Right side should be another assignment (b = c)
+                match *rvalue {
+                    Expression::Assignment { op, lvalue, rvalue } => {
+                        assert!(matches!(op, AssignOp::Assign));
+                        match *lvalue {
+                            Expression::Variable(name) => assert_eq!(name, "b"),
+                            _ => panic!("Expected variable 'b'"),
+                        }
+                        match *rvalue {
+                            Expression::Variable(name) => assert_eq!(name, "c"),
+                            _ => panic!("Expected variable 'c'"),
+                        }
+                    }
+                    _ => panic!("Expected assignment on right side"),
+                }
+            }
+            _ => panic!("Expected assignment expression"),
+        }
+    }
+
+    #[test]
+    fn test_parse_assignment_with_expression() {
+        // x = 1 + 2 * 3 should be parsed as x = (1 + (2 * 3))
+        let result = parse_expr("x = 1 + 2 * 3");
+        assert!(result.is_ok());
+        match result.unwrap() {
+            Expression::Assignment { op, lvalue, rvalue } => {
+                assert!(matches!(op, AssignOp::Assign));
+                match *lvalue {
+                    Expression::Variable(name) => assert_eq!(name, "x"),
+                    _ => panic!("Expected variable on left side"),
+                }
+                // Right side should be a binary expression
+                match *rvalue {
+                    Expression::Binary { op, .. } => {
+                        assert!(matches!(op, BinaryOp::Add));
+                    }
+                    _ => panic!("Expected binary expression on right side"),
+                }
+            }
+            _ => panic!("Expected assignment expression"),
+        }
+    }
+
+    #[test]
+    fn test_parse_plus_assign() {
+        let result = parse_expr("x += 5");
+        assert!(result.is_ok());
+        match result.unwrap() {
+            Expression::Assignment { op, lvalue, rvalue } => {
+                assert!(matches!(op, AssignOp::PlusAssign));
+                match *lvalue {
+                    Expression::Variable(name) => assert_eq!(name, "x"),
+                    _ => panic!("Expected variable on left side"),
+                }
+                assert!(matches!(*rvalue, Expression::Constant(5)));
+            }
+            _ => panic!("Expected assignment expression"),
+        }
+    }
+
+    #[test]
+    fn test_parse_minus_assign() {
+        let result = parse_expr("y -= 10");
+        assert!(result.is_ok());
+        match result.unwrap() {
+            Expression::Assignment { op, lvalue, rvalue } => {
+                assert!(matches!(op, AssignOp::MinusAssign));
+                match *lvalue {
+                    Expression::Variable(name) => assert_eq!(name, "y"),
+                    _ => panic!("Expected variable on left side"),
+                }
+                assert!(matches!(*rvalue, Expression::Constant(10)));
+            }
+            _ => panic!("Expected assignment expression"),
+        }
+    }
+
+    #[test]
+    fn test_parse_mul_assign() {
+        let result = parse_expr("z *= 3");
+        assert!(result.is_ok());
+        match result.unwrap() {
+            Expression::Assignment { op, lvalue, rvalue } => {
+                assert!(matches!(op, AssignOp::MulAssign));
+                match *lvalue {
+                    Expression::Variable(name) => assert_eq!(name, "z"),
+                    _ => panic!("Expected variable on left side"),
+                }
+                assert!(matches!(*rvalue, Expression::Constant(3)));
+            }
+            _ => panic!("Expected assignment expression"),
+        }
+    }
+
+    #[test]
+    fn test_parse_div_assign() {
+        let result = parse_expr("a /= 2");
+        assert!(result.is_ok());
+        match result.unwrap() {
+            Expression::Assignment { op, lvalue, rvalue } => {
+                assert!(matches!(op, AssignOp::DivAssign));
+                match *lvalue {
+                    Expression::Variable(name) => assert_eq!(name, "a"),
+                    _ => panic!("Expected variable on left side"),
+                }
+                assert!(matches!(*rvalue, Expression::Constant(2)));
+            }
+            _ => panic!("Expected assignment expression"),
+        }
+    }
+
+    #[test]
+    fn test_parse_mod_assign() {
+        let result = parse_expr("b %= 5");
+        assert!(result.is_ok());
+        match result.unwrap() {
+            Expression::Assignment { op, lvalue, rvalue } => {
+                assert!(matches!(op, AssignOp::ModAssign));
+                match *lvalue {
+                    Expression::Variable(name) => assert_eq!(name, "b"),
+                    _ => panic!("Expected variable on left side"),
+                }
+                assert!(matches!(*rvalue, Expression::Constant(5)));
+            }
+            _ => panic!("Expected assignment expression"),
+        }
+    }
+
+    #[test]
+    fn test_parse_and_assign() {
+        let result = parse_expr("c &= 7");
+        assert!(result.is_ok());
+        match result.unwrap() {
+            Expression::Assignment { op, lvalue, rvalue } => {
+                assert!(matches!(op, AssignOp::AndAssign));
+                match *lvalue {
+                    Expression::Variable(name) => assert_eq!(name, "c"),
+                    _ => panic!("Expected variable on left side"),
+                }
+                assert!(matches!(*rvalue, Expression::Constant(7)));
+            }
+            _ => panic!("Expected assignment expression"),
+        }
+    }
+
+    #[test]
+    fn test_parse_or_assign() {
+        let result = parse_expr("d |= 8");
+        assert!(result.is_ok());
+        match result.unwrap() {
+            Expression::Assignment { op, lvalue, rvalue } => {
+                assert!(matches!(op, AssignOp::OrAssign));
+                match *lvalue {
+                    Expression::Variable(name) => assert_eq!(name, "d"),
+                    _ => panic!("Expected variable on left side"),
+                }
+                assert!(matches!(*rvalue, Expression::Constant(8)));
+            }
+            _ => panic!("Expected assignment expression"),
+        }
+    }
+
+    #[test]
+    fn test_parse_xor_assign() {
+        let result = parse_expr("e ^= 9");
+        assert!(result.is_ok());
+        match result.unwrap() {
+            Expression::Assignment { op, lvalue, rvalue } => {
+                assert!(matches!(op, AssignOp::XorAssign));
+                match *lvalue {
+                    Expression::Variable(name) => assert_eq!(name, "e"),
+                    _ => panic!("Expected variable on left side"),
+                }
+                assert!(matches!(*rvalue, Expression::Constant(9)));
+            }
+            _ => panic!("Expected assignment expression"),
+        }
+    }
+
+    #[test]
+    fn test_parse_left_shift_assign() {
+        let result = parse_expr("f <<= 2");
+        assert!(result.is_ok());
+        match result.unwrap() {
+            Expression::Assignment { op, lvalue, rvalue } => {
+                assert!(matches!(op, AssignOp::LShiftAssign));
+                match *lvalue {
+                    Expression::Variable(name) => assert_eq!(name, "f"),
+                    _ => panic!("Expected variable on left side"),
+                }
+                assert!(matches!(*rvalue, Expression::Constant(2)));
+            }
+            _ => panic!("Expected assignment expression"),
+        }
+    }
+
+    #[test]
+    fn test_parse_right_shift_assign() {
+        let result = parse_expr("g >>= 3");
+        assert!(result.is_ok());
+        match result.unwrap() {
+            Expression::Assignment { op, lvalue, rvalue } => {
+                assert!(matches!(op, AssignOp::RShiftAssign));
+                match *lvalue {
+                    Expression::Variable(name) => assert_eq!(name, "g"),
+                    _ => panic!("Expected variable on left side"),
+                }
+                assert!(matches!(*rvalue, Expression::Constant(3)));
+            }
+            _ => panic!("Expected assignment expression"),
+        }
+    }
+
+    #[test]
+    fn test_assignment_lower_precedence_than_comparison() {
+        // x = 1 < 2 should be parsed as x = (1 < 2)
+        let result = parse_expr("x = 1 < 2");
+        assert!(result.is_ok());
+        match result.unwrap() {
+            Expression::Assignment { op, lvalue, rvalue } => {
+                assert!(matches!(op, AssignOp::Assign));
+                match *lvalue {
+                    Expression::Variable(name) => assert_eq!(name, "x"),
+                    _ => panic!("Expected variable on left side"),
+                }
+                // Right side should be a comparison
+                match *rvalue {
+                    Expression::Binary { op, .. } => {
+                        assert!(matches!(op, BinaryOp::LT));
+                    }
+                    _ => panic!("Expected comparison on right side"),
+                }
+            }
+            _ => panic!("Expected assignment expression"),
+        }
     }
 }

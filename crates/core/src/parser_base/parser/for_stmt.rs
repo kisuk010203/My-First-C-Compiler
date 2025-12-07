@@ -7,20 +7,29 @@ use crate::{
 impl<'a> Parser<'a> {
     pub(super) fn parse_for_statement(&mut self) -> Result<ForStmt<'a>, CompilerParseError> {
         self.expect_multiple([t!("for"), t!("(")])?;
-        let init = self
-            .eat_when(|tt| tt != &t!(";"))?
-            .then(|| self.parse_expression())
-            .transpose()?;
+
+        // Parse init expression (optional)
+        let init = match self.peek_token()? {
+            Some(Token { kind: t!(";"), .. }) => None,
+            Some(_) => Some(self.parse_expression()?),
+            None => None,
+        };
         self.expect(t!(";"))?;
-        let cond = self
-            .eat_when(|tt| tt != &t!(";"))?
-            .then(|| self.parse_expression())
-            .transpose()?;
+
+        // Parse condition expression (optional)
+        let cond = match self.peek_token()? {
+            Some(Token { kind: t!(";"), .. }) => None,
+            Some(_) => Some(self.parse_expression()?),
+            None => None,
+        };
         self.expect(t!(";"))?;
-        let post = self
-            .eat_when(|tt| tt != &t!(")"))?
-            .then(|| self.parse_expression())
-            .transpose()?;
+
+        // Parse post expression (optional)
+        let post = match self.peek_token()? {
+            Some(Token { kind: t!(")"), .. }) => None,
+            Some(_) => Some(self.parse_expression()?),
+            None => None,
+        };
         self.expect(t!(")"))?;
 
         let body = self.parse_statement()?;

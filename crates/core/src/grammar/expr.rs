@@ -16,6 +16,11 @@ pub enum Expression<'a> {
         op: UnaryOp,
         expr: Box<Expression<'a>>,
     },
+    Assignment {
+        op: AssignOp,
+        lvalue: Box<Expression<'a>>,
+        rvalue: Box<Expression<'a>>,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -67,4 +72,38 @@ impl BinaryOp {
 pub enum UnaryOp {
     Negate,
     Not,
+}
+
+#[derive(Debug, Clone)]
+pub enum AssignOp {
+    Assign,       // =
+    PlusAssign,   // +=
+    MinusAssign,  // -=
+    MulAssign,    // *=
+    DivAssign,    // /=
+    ModAssign,    // %=
+    AndAssign,    // &=
+    OrAssign,     // |=
+    XorAssign,    // ^=
+    LShiftAssign, // <<=
+    RShiftAssign, // >>=
+}
+
+impl AssignOp {
+    pub fn from_token_type(token: &TokenType) -> Option<Self> {
+        match token {
+            t!("=") => Some(AssignOp::Assign),
+            t!("+=") => Some(AssignOp::PlusAssign),
+            t!("-=") => Some(AssignOp::MinusAssign),
+            t!("*=") => Some(AssignOp::MulAssign),
+            t!("/=") => Some(AssignOp::DivAssign),
+            t!("%=") => Some(AssignOp::ModAssign),
+            t!("&=") => Some(AssignOp::AndAssign),
+            t!("|=") => Some(AssignOp::OrAssign),
+            t!("^=") => Some(AssignOp::XorAssign),
+            t!("<<=") => Some(AssignOp::LShiftAssign),
+            t!(">>=") => Some(AssignOp::RShiftAssign),
+            _ => None,
+        }
+    }
 }
