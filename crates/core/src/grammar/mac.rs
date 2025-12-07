@@ -76,4 +76,7 @@ macro_rules! t {
     ("continue") => {
         $crate::grammar::TokenType::Static($crate::grammar::StaticToken::Continue)
     };
+    ("for") => {
+        $crate::grammar::TokenType::Static($crate::grammar::StaticToken::For)
+    };
 }

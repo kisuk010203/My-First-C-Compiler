@@ -24,6 +24,16 @@ impl<'a> Parser<'a> {
         }
     }
 
+    pub(super) fn expect_multiple<I>(&mut self, expected: I) -> Result<(), CompilerParseError>
+    where
+        I: IntoIterator<Item = TokenType<'static>>,
+    {
+        for token_type in expected.into_iter() {
+            self.expect(token_type)?;
+        }
+        Ok(())
+    }
+
     /// Expect an identifier token
     pub(super) fn expect_identifier(&mut self) -> Result<Cow<'a, str>, CompilerParseError> {
         match self.next_token()? {

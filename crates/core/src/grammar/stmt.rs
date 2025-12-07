@@ -41,6 +41,14 @@ statement_enum! {
     }
 
     #[derive(Debug, Clone)]
+    pub struct ForStmt<'a> {
+        pub init: Option<Expression<'a>>,
+        pub cond: Option<Expression<'a>>,
+        pub post: Option<Expression<'a>>,
+        pub body: Box<Statement<'a>>,
+    }
+
+    #[derive(Debug, Clone)]
     pub struct IfStmt<'a> {
         pub cond: Expression<'a>,
         pub then_block: Box<Statement<'a>>,
