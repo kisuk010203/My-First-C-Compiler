@@ -84,10 +84,9 @@ impl<'a> Parser<'a> {
             Some(Token {
                 kind: t!("break"), ..
             }) => self.parse_break_statement().map(Into::into),
-            Some(Token {
-                kind: t!("int") | t!("void"),
-                ..
-            }) => self.parse_declaration_statement().map(Into::into),
+            Some(Token { kind, .. }) if Type::from_token_type(&kind).is_some() => {
+                self.parse_declaration_statement().map(Into::into)
+            }
             Some(Token {
                 kind: t!("continue"),
                 ..
