@@ -30,10 +30,11 @@ impl<'a> Parser<'a> {
                 self.next_token()?;
                 Ok(Expression::Variable(name.clone()))
             }
-            Some(Token { kind: t!("-"), .. }) => {
+            Some(Token { kind, .. }) if UnaryOp::from_token_type(&kind).is_some() => {
+                let op = UnaryOp::from_token_type(&kind).expect("asserted to be some");
                 self.next_token()?;
                 Ok(Expression::Unary {
-                    op: UnaryOp::Negate,
+                    op,
                     expr: Box::new(self.parse_unit_expression()?),
                 })
             }

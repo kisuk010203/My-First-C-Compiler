@@ -79,6 +79,16 @@ pub enum UnaryOp {
     Not,
 }
 
+impl UnaryOp {
+    pub fn from_token_type(token: &TokenType) -> Option<Self> {
+        match token {
+            t!("!") => Some(UnaryOp::Not),
+            t!("-") => Some(UnaryOp::Negate),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum AssignOp {
     Assign,       // =
