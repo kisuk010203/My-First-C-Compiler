@@ -1,23 +1,29 @@
-use std::{borrow::Cow, iter::Peekable};
+mod block_stmt;
+mod break_stmt;
+mod continue_stmt;
+mod expr;
+mod if_stmt;
+mod return_stmt;
+mod util;
+mod while_stmt;
+
+use std::iter::Peekable;
 
 use crate::{
     error::IntoCompilerError,
     grammar::*,
-    lexer_base::{CompilerLexError, Lexer},
+    lexer_base::Lexer,
     parser_base::{CompilerParseError, ParseError},
     t,
 };
 
 #[derive(Clone)]
-pub struct Parser<'a, I>
-where
-    I: Iterator<Item = Result<Token<'a>, CompilerLexError>>,
-{
-    lexer: Peekable<I>,
+pub struct Parser<'a> {
+    lexer: Peekable<Lexer<'a>>,
     eof_span: Span,
 }
 
-impl<'a> Parser<'a, Lexer<'a>> {
+impl<'a> Parser<'a> {
     pub fn new(lexer: Lexer<'a>) -> Self {
         let eof_span = lexer.eof_span();
         Self {
@@ -25,12 +31,7 @@ impl<'a> Parser<'a, Lexer<'a>> {
             eof_span,
         }
     }
-}
 
-impl<'a, I> Parser<'a, I>
-where
-    I: Iterator<Item = Result<Token<'a>, CompilerLexError>>,
-{
     /// Parse a complete program (one or more function definitions)
     pub fn parse(mut self) -> Result<Program<'a>, CompilerParseError> {
         let mut functions = Vec::new();
@@ -94,238 +95,13 @@ where
             }) => self.parse_while_statement().map(Into::into),
             Some(Token { kind: t!("{"), .. }) => self.parse_block_statement().map(Into::into),
             Some(token) => {
-                Err(ParseError::expected_statement(token.kind.clone()).with_span(token.span))
+                let expr = self.parse_expression().map_err(|_| {
+                    ParseError::expected_statement(token.kind.clone()).with_span(token.span)
+                })?;
+                Ok(ExprStmt { expr }.into())
             }
             None => Err(ParseError::expected_statement_eof().with_span(self.eof_span)),
         }
-    }
-
-    fn parse_break_statement(&mut self) -> Result<BreakStmt<'a>, CompilerParseError> {
-        self.expect(t!("break"))?;
-        self.expect(t!(";"))?;
-        Ok(BreakStmt::new())
-    }
-
-    fn parse_continue_statement(&mut self) -> Result<ContinueStmt<'a>, CompilerParseError> {
-        self.expect(t!("continue"))?;
-        self.expect(t!(";"))?;
-        Ok(ContinueStmt::new())
-    }
-
-    /// Parse a block: { statement* }
-    fn parse_block_statement(&mut self) -> Result<BlockStmt<'a>, CompilerParseError> {
-        self.expect(t!("{"))?;
-
-        let mut statements = Vec::new();
-
-        // Parse statements until we hit '}'
-        loop {
-            match self.peek_token()? {
-                Some(Token { kind: t!("}"), .. }) => break,
-                Some(_) => {
-                    statements.push(self.parse_statement()?);
-                }
-                None => {
-                    return Err(ParseError::unexpected_eof_with_message("'}' or statement")
-                        .with_span(self.eof_span));
-                }
-            }
-        }
-
-        self.expect(t!("}"))?;
-        Ok(BlockStmt { statements })
-    }
-
-    fn parse_do_while_statement(&mut self) -> Result<DoWhileStmt<'a>, CompilerParseError> {
-        self.expect(t!("do"))?;
-        let body = self.parse_statement()?;
-        self.expect(t!("while"))?;
-        self.expect(t!("("))?;
-        let condition = self.parse_expression()?;
-        self.expect(t!(")"))?;
-        self.expect(t!(";"))?;
-        Ok(DoWhileStmt {
-            body: Box::new(body),
-            cond: condition,
-        })
-    }
-
-    /// Parse an if statement: if (condition) { body } else { body }
-    fn parse_if_statement(&mut self) -> Result<IfStmt<'a>, CompilerParseError> {
-        self.expect(t!("if"))?;
-        self.expect(t!("("))?;
-        let condition = self.parse_expression()?;
-        self.expect(t!(")"))?;
-        let then_block = self.parse_statement()?;
-        let else_block = self
-            .expect_optional(t!("else"))?
-            .map(|_| self.parse_statement())
-            .transpose()?;
-
-        Ok(IfStmt {
-            cond: condition,
-            then_block: Box::new(then_block),
-            else_block: else_block.map(Box::new),
-        })
-    }
-
-    /// Parse a return statement: return expr;
-    fn parse_return_statement(&mut self) -> Result<ReturnStmt<'a>, CompilerParseError> {
-        self.expect(t!("return"))?;
-        let expr = self.parse_expression()?;
-        self.expect(t!(";"))?;
-        Ok(ReturnStmt { expr })
-    }
-
-    fn parse_while_statement(&mut self) -> Result<WhileStmt<'a>, CompilerParseError> {
-        self.expect(t!("while"))?;
-        self.expect(t!("("))?;
-        let cond = self.parse_expression()?;
-        self.expect(t!(")"))?;
-        let body = self.parse_statement()?;
-        Ok(WhileStmt {
-            cond,
-            body: Box::new(body),
-        })
-    }
-
-    /// Parse an expression
-    fn parse_expression(&mut self) -> Result<Expression<'a>, CompilerParseError> {
-        let base = self.parse_unit_expression()?;
-        self.parse_infix_operator(base, 0)
-    }
-
-    fn parse_unit_expression(&mut self) -> Result<Expression<'a>, CompilerParseError> {
-        match self.peek_token()? {
-            Some(Token { kind: t!("("), .. }) => self.parse_grouped_expression(),
-            Some(Token {
-                kind: TokenType::Constant(value),
-                ..
-            }) => {
-                self.next_token()?;
-                Ok(Expression::Constant(value))
-            }
-            Some(Token {
-                kind: TokenType::Identifier(name),
-                ..
-            }) => {
-                self.next_token()?;
-                Ok(Expression::Variable(name.clone()))
-            }
-            Some(Token { kind: t!("-"), .. }) => {
-                self.next_token()?;
-                Ok(Expression::Unary {
-                    op: UnaryOp::Negate,
-                    expr: Box::new(self.parse_unit_expression()?),
-                })
-            }
-            Some(token) => Err(ParseError::expected_expression(token.kind).with_span(token.span)),
-            None => Err(ParseError::expected_expression_eof().with_span(self.eof_span)),
-        }
-    }
-
-    fn parse_grouped_expression(&mut self) -> Result<Expression<'a>, CompilerParseError> {
-        self.expect(t!("("))?;
-        let expr = self.parse_expression()?;
-        self.expect(t!(")"))?;
-        Ok(Expression::Grouped(Box::new(expr)))
-    }
-
-    fn parse_infix_operator(
-        &mut self,
-        mut lhs: Expression<'a>,
-        min_bp: u8,
-    ) -> Result<Expression<'a>, CompilerParseError> {
-        while let Some(op) = self
-            .peek_token()?
-            .and_then(|t| BinaryOp::from_token_type(&t.kind))
-        {
-            let (left_bp, right_bp) = op.infix_binding_power();
-
-            // If the binding power is too low, stop
-            if left_bp < min_bp {
-                break;
-            }
-
-            // Consume the operator token
-            self.next_token()?;
-
-            let rhs = self.parse_unit_expression()?;
-            let rhs = self.parse_infix_operator(rhs, right_bp)?;
-
-            lhs = Expression::Binary {
-                op,
-                lhs: Box::new(lhs),
-                rhs: Box::new(rhs),
-            };
-        }
-
-        Ok(lhs)
-    }
-
-    /// Expect a specific token
-    fn expect(&mut self, expected: TokenType<'static>) -> Result<(), CompilerParseError> {
-        match self.next_token()? {
-            Some(token) if token.kind == expected => Ok(()),
-            Some(unexpected) => {
-                Err(ParseError::unexpected_token(expected, unexpected.kind)
-                    .with_span(unexpected.span))
-            }
-            None => Err(ParseError::unexpected_eof(expected).with_span(self.eof_span)),
-        }
-    }
-
-    /// Expect an identifier token
-    fn expect_identifier(&mut self) -> Result<Cow<'a, str>, CompilerParseError> {
-        match self.next_token()? {
-            Some(Token {
-                kind: TokenType::Identifier(name),
-                ..
-            }) => Ok(name),
-            Some(Token { kind, span }) => {
-                Err(ParseError::expected_identifier(kind).with_span(span))
-            }
-            None => Err(ParseError::expected_identifier_eof().with_span(self.eof_span)),
-        }
-    }
-
-    /// Optionally consume a token if it matches
-    fn expect_optional(
-        &mut self,
-        expected: TokenType<'static>,
-    ) -> Result<Option<Token<'a>>, CompilerParseError> {
-        match self.peek_token()? {
-            Some(token) if token.kind == expected => {
-                self.next_token()?;
-                Ok(Some(token))
-            }
-            _ => Ok(None),
-        }
-    }
-
-    fn expect_type(&mut self) -> Result<Type, CompilerParseError> {
-        match self.peek_token()? {
-            Some(token) => {
-                self.next_token()?;
-                Type::from_token_type(&token.kind)
-                    .ok_or(ParseError::expected_type(token.kind).with_span(token.span))
-            }
-            None => Err(ParseError::expected_type_eof().with_span(self.eof_span)),
-        }
-    }
-
-    /// Consumes the next token from the lexer.
-    fn next_token(&mut self) -> Result<Option<Token<'a>>, CompilerParseError> {
-        self.lexer.next().transpose().map_err(|e| e.convert_error())
-    }
-
-    /// Peeks the next token from the lexer without consuming it.
-    fn peek_token(&mut self) -> Result<Option<Token<'a>>, CompilerParseError> {
-        self.lexer
-            .peek()
-            .cloned()
-            .transpose()
-            .map_err(|e| e.convert_error())
     }
 }
 

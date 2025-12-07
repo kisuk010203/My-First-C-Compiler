@@ -36,6 +36,11 @@ statement_enum! {
     }
 
     #[derive(Debug, Clone)]
+    pub struct ExprStmt<'a> {
+        pub expr: Expression<'a>,
+    }
+
+    #[derive(Debug, Clone)]
     pub struct IfStmt<'a> {
         pub cond: Expression<'a>,
         pub then_block: Box<Statement<'a>>,
