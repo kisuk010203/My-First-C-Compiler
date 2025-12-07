@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use crate::grammar::*;
+use crate::{grammar::*, t};
 
 #[derive(Debug, Clone)]
 pub enum Expression<'a> {
@@ -48,16 +48,16 @@ impl BinaryOp {
 
     pub fn from_token_type(token: &TokenType) -> Option<Self> {
         match token {
-            TokenType::Static(StaticToken::Plus) => Some(BinaryOp::Add),
-            TokenType::Static(StaticToken::Minus) => Some(BinaryOp::Subtract),
-            TokenType::Static(StaticToken::Star) => Some(BinaryOp::Multiply),
-            TokenType::Static(StaticToken::Slash) => Some(BinaryOp::Divide),
-            TokenType::Static(StaticToken::LessThan) => Some(BinaryOp::LT),
-            TokenType::Static(StaticToken::GreaterThan) => Some(BinaryOp::GT),
-            TokenType::Static(StaticToken::LessThanOrEqual) => Some(BinaryOp::LTE),
-            TokenType::Static(StaticToken::GreaterThanOrEqual) => Some(BinaryOp::GTE),
-            TokenType::Static(StaticToken::EqualEqual) => Some(BinaryOp::EQ),
-            TokenType::Static(StaticToken::NotEqual) => Some(BinaryOp::NEQ),
+            t!("+") => Some(BinaryOp::Add),
+            t!("-") => Some(BinaryOp::Subtract),
+            t!("*") => Some(BinaryOp::Multiply),
+            t!("/") => Some(BinaryOp::Divide),
+            t!("<") => Some(BinaryOp::LT),
+            t!(">") => Some(BinaryOp::GT),
+            t!("<=") => Some(BinaryOp::LTE),
+            t!(">=") => Some(BinaryOp::GTE),
+            t!("==") => Some(BinaryOp::EQ),
+            t!("!=") => Some(BinaryOp::NEQ),
             _ => None,
         }
     }
