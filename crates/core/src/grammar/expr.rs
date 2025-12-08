@@ -42,7 +42,7 @@ pub enum BinaryOp {
 }
 
 impl BinaryOp {
-    pub fn infix_binding_power(&self) -> (u8, u8) {
+    pub const fn infix_binding_power(&self) -> (u8, u8) {
         match self {
             // Multiplicative operators (highest precedence)
             BinaryOp::Multiply | BinaryOp::Divide => (11, 12),
@@ -56,7 +56,7 @@ impl BinaryOp {
         }
     }
 
-    pub fn from_token_type(token: &TokenType) -> Option<Self> {
+    pub const fn from_token_type(token: &TokenType) -> Option<Self> {
         match token {
             t!("+") => Some(BinaryOp::Add),
             t!("-") => Some(BinaryOp::Subtract),
@@ -80,7 +80,7 @@ pub enum UnaryOp {
 }
 
 impl UnaryOp {
-    pub fn from_token_type(token: &TokenType) -> Option<Self> {
+    pub const fn from_token_type(token: &TokenType) -> Option<Self> {
         match token {
             t!("!") => Some(UnaryOp::Not),
             t!("-") => Some(UnaryOp::Negate),
@@ -108,14 +108,15 @@ impl AssignOp {
     /// Returns binding power for assignment operators
     /// Assignment is right-associative, so right BP is lower than left BP
     /// This gives it the lowest precedence of all operators
-    pub fn infix_binding_power(&self) -> (u8, u8) {
+    #[inline]
+    pub const fn infix_binding_power(&self) -> (u8, u8) {
         // All assignment operators have the same precedence
         // Right-associative: (left_bp=1, right_bp=0)
         // This means: if we see another assignment on the right, we parse it first
         (1, 0)
     }
 
-    pub fn from_token_type(token: &TokenType) -> Option<Self> {
+    pub const fn from_token_type(token: &TokenType) -> Option<Self> {
         match token {
             t!("=") => Some(AssignOp::Assign),
             t!("+=") => Some(AssignOp::PlusAssign),
