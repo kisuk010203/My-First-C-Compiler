@@ -38,17 +38,20 @@ impl<'a> Parser<'a> {
                     expr: Box::new(self.parse_unit_expression()?),
                 })
             }
-            Some(token) => Err(ParseError::expected_expression(token.kind).with_span(token.span)),
-            None => Err(ParseError::expected_expression_eof().with_span(self.eof_span)),
+            else_token => Err(ParseError::unexpected(
+                "expression",
+                else_token.map(|t| t.kind).as_ref(),
+            )
+            .with_span(self.eof_span)),
         }
     }
 
     pub(super) fn parse_grouped_expression(
         &mut self,
     ) -> Result<Expression<'a>, CompilerParseError> {
-        self.expect(t!("("))?;
+        self.expect_token(t!("("))?;
         let expr = self.parse_expression()?;
-        self.expect(t!(")"))?;
+        self.expect_token(t!(")"))?;
         Ok(Expression::Grouped(Box::new(expr)))
     }
 
