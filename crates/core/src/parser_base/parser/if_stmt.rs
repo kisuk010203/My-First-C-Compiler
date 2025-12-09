@@ -54,7 +54,7 @@ mod tests {
         let stmt = result.unwrap();
         match stmt.cond {
             Expression::Binary { op, lhs, rhs } => {
-                assert!(matches!(op, BinaryOp::GT));
+                assert!(matches!(op, BinaryOp::GreaterThan));
                 assert!(matches!(*lhs, Expression::Variable(name) if name == "x"));
                 assert!(matches!(*rhs, Expression::Constant(5)));
             }

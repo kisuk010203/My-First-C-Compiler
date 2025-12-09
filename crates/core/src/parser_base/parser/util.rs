@@ -116,4 +116,8 @@ impl<'a> Parser<'a> {
             .transpose()
             .map_err(|e| e.convert_error())
     }
+
+    pub(super) fn peek_token_type(&mut self) -> Result<Option<TokenType<'a>>, CompilerParseError> {
+        Ok(self.peek_token()?.map(|token| token.kind))
+    }
 }

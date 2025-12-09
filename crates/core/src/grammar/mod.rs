@@ -1,13 +1,13 @@
 mod _type;
 mod expr;
 mod mac;
-mod precedence;
+mod operator;
 mod stmt;
 mod token;
 
 pub use _type::Type;
 pub use expr::*;
-pub use precedence::*;
+pub use operator::*;
 pub use stmt::*;
 pub use token::*;
 

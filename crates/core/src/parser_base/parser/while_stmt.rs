@@ -66,7 +66,7 @@ mod tests {
         let stmt = result.unwrap();
         match stmt.cond {
             Expression::Binary { op, lhs, rhs } => {
-                assert!(matches!(op, BinaryOp::LT));
+                assert!(matches!(op, BinaryOp::LessThan));
                 assert!(matches!(*lhs, Expression::Variable(name) if name == "x"));
                 assert!(matches!(*rhs, Expression::Constant(10)));
             }
@@ -129,7 +129,7 @@ mod tests {
         let stmt = result.unwrap();
         match stmt.cond {
             Expression::Binary { op, lhs, rhs } => {
-                assert!(matches!(op, BinaryOp::LT));
+                assert!(matches!(op, BinaryOp::LessThan));
                 assert!(matches!(*lhs, Expression::Variable(name) if name == "x"));
                 assert!(matches!(*rhs, Expression::Constant(10)));
             }
