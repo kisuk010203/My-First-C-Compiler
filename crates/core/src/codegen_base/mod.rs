@@ -1,11 +1,12 @@
 use crate::{
     grammar::{Expression, Program, Statement, UnaryOp},
-    ir_base::{self, Instruction, Operand, Size, IRFuncDef, IRProgram},
+    ir_base::{self, IRFuncDef, IRProgram, Instruction, Operand},
     r,
 };
 
 pub struct CodeGenerator {
     current_function: Vec<Instruction>,
+    #[allow(dead_code)]
     label_counter: usize,
 }
 
@@ -17,6 +18,7 @@ impl CodeGenerator {
         }
     }
 
+    #[allow(dead_code)]
     fn generate_label(&mut self, prefix: &str) -> String {
         let label = format!(".L{}_{}", prefix, self.label_counter);
         self.label_counter += 1;
@@ -62,11 +64,7 @@ impl CodeGenerator {
         self.emit(Instruction::Pop(Operand::Register(r!("rbp"))));
         self.emit(Instruction::Ret);
 
-        IRFuncDef::new(
-            func.name.clone(),
-            true,
-            &self.current_function,
-        )
+        IRFuncDef::new(func.name.clone(), true, &self.current_function)
     }
 
     fn generate_statement(&mut self, stmt: Statement<'_>) {
@@ -101,7 +99,11 @@ impl CodeGenerator {
             }),
             Expression::Variable(_) => todo!(),
             Expression::Grouped(_) => todo!(),
-            Expression::Binary { op: _op, lhs: _lhs, rhs: _rhs } => todo!(),
+            Expression::Binary {
+                op: _op,
+                lhs: _lhs,
+                rhs: _rhs,
+            } => todo!(),
             Expression::Unary { op, expr } => {
                 self.generate_expression(expr);
                 match op {
@@ -115,8 +117,15 @@ impl CodeGenerator {
                     }
                 }
             }
-            Expression::Assignment { op: _op, lhs: _lhs, rhs: _rhs } => todo!(),
-            Expression::FunctionCall { callee: _callee, args: _args } => todo!(),
+            Expression::Assignment {
+                op: _op,
+                lhs: _lhs,
+                rhs: _rhs,
+            } => todo!(),
+            Expression::FunctionCall {
+                callee: _callee,
+                args: _args,
+            } => todo!(),
         }
     }
 }
