@@ -89,7 +89,7 @@ fn main() {
         return;
     }
 
-    let mut codegen = CodeGenerator::new();
+    let codegen = CodeGenerator::new();
     let ir_program = codegen.generate(&ast);
 
     if cli.ir_only {
