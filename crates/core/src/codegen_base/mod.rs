@@ -82,14 +82,14 @@ impl CodeGenerator {
                 }
             }
             Statement::Null(_) => {}
-            Statement::Break(break_stmt) => todo!(),
-            Statement::Continue(continue_stmt) => todo!(),
-            Statement::Declaration(declaration_stmt) => todo!(),
-            Statement::DoWhile(do_while_stmt) => todo!(),
-            Statement::Expr(expr_stmt) => todo!(),
-            Statement::For(for_stmt) => todo!(),
-            Statement::If(if_stmt) => todo!(),
-            Statement::While(while_stmt) => todo!(),
+            Statement::Break(_) => todo!(),
+            Statement::Continue(_) => todo!(),
+            Statement::Declaration(_) => todo!(),
+            Statement::DoWhile(_) => todo!(),
+            Statement::Expr(_) => todo!(),
+            Statement::For(_) => todo!(),
+            Statement::If(_) => todo!(),
+            Statement::While(_) => todo!(),
         }
     }
 
@@ -99,9 +99,9 @@ impl CodeGenerator {
                 src: Operand::Immediate(*val),
                 dst: Operand::Register(r!("rax")),
             }),
-            Expression::Variable(cow) => todo!(),
-            Expression::Grouped(expression) => todo!(),
-            Expression::Binary { op, lhs, rhs } => todo!(),
+            Expression::Variable(_) => todo!(),
+            Expression::Grouped(_) => todo!(),
+            Expression::Binary { op: _op, lhs: _lhs, rhs: _rhs } => todo!(),
             Expression::Unary { op, expr } => {
                 self.generate_expression(expr);
                 match op {
@@ -115,8 +115,8 @@ impl CodeGenerator {
                     }
                 }
             }
-            Expression::Assignment { op, lhs, rhs } => todo!(),
-            Expression::FunctionCall { callee, args } => todo!(),
+            Expression::Assignment { op: _op, lhs: _lhs, rhs: _rhs } => todo!(),
+            Expression::FunctionCall { callee: _callee, args: _args } => todo!(),
         }
     }
 }
