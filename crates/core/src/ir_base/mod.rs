@@ -2,9 +2,9 @@ mod emitter;
 mod instruction;
 mod mac;
 mod operand;
-mod reg;
+pub mod reg;
 
-pub use crate::ir_base::{emitter::*, instruction::*, operand::*, reg::*};
+pub use crate::ir_base::{emitter::*, instruction::*, operand::*};
 
 /// Complete program in IR
 #[derive(Debug, Clone)]

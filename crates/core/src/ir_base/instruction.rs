@@ -78,7 +78,7 @@ impl Instruction {
             Instruction::Call(function) => {
                 format!("call {}", function)
             }
-            Instruction::Ret => "ret".to_string(),
+            Instruction::Ret => "retq".to_string(),
         }
     }
 }
@@ -101,4 +101,13 @@ pub struct IRFuncDef<'a> {
     pub name: Cow<'a, str>,
     pub is_global: bool,
     pub instructions: Vec<Instruction>,
+}
+impl<'a> IRFuncDef<'a> {
+    pub fn new(name: Cow<'a, str>, is_global: bool, instructions: &[Instruction]) -> Self {
+        Self {
+            name: Cow::Owned(format!("_{}", name)),
+            is_global,
+            instructions: instructions.to_vec(),
+        }
+    }
 }

@@ -15,11 +15,12 @@ impl Emitter {
         }
     }
 
-    pub fn emit_program(mut self, program: &IRProgram) {
+    pub fn emit_program(mut self, program: &IRProgram) -> String {
         for func in &program.functions {
             self.emit_function(func);
             self.output.push('\n');
         }
+        self.output
     }
 
     pub fn emit_function(&mut self, func: &IRFuncDef) {
