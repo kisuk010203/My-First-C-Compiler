@@ -2,11 +2,11 @@ use crate::ir_base::reg::PhyRegister;
 /// Operand for instructions
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Operand {
-    Immediate(i32),
+    Immediate(i64),
     Register(PhyRegister),
     Memory {
         base: Option<PhyRegister>,
-        offset: i32,
+        offset: i64,
     },
     // Label(String),
 }
@@ -18,7 +18,7 @@ impl std::fmt::Display for Operand {
             Operand::Memory { base, offset } => match base {
                 Some(reg) => write!(f, "{}(%{})", offset, reg.as_str()),
                 //TODO: Choose how to represent memory operands without base registers
-                None => write!(f, "memory {}(%rsp)", offset),
+                None => write!(f, "{}(%rsp)", offset),
             },
         }
     }

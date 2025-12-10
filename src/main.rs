@@ -89,8 +89,7 @@ fn main() {
         return;
     }
 
-    //TODO: Assembly generation and output to file
-    let codegen = CodeGenerator::new();
+    let mut codegen = CodeGenerator::new();
     let ir_program = codegen.generate(&ast);
 
     if cli.ir_only {

@@ -301,7 +301,7 @@ impl<'a> Token<'a> {
     }
 
     /// Create a constant-type token
-    pub fn constant(value: i32, span: Span) -> Self {
+    pub fn constant(value: i64, span: Span) -> Self {
         Self::new(TokenType::Constant(value), span)
     }
 
@@ -322,7 +322,7 @@ impl<'a> PartialEq for Token<'a> {
 pub enum TokenType<'a> {
     // Identifiers and literals
     Identifier(Cow<'a, str>), // [a-zA-Z_]\w*
-    Constant(i32),            // [0-9]+
+    Constant(i64),            // [0-9]+
 
     // Static tokens (keywords and symbols)
     Static(StaticToken),

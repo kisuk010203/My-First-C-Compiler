@@ -50,10 +50,6 @@ impl CodeGenerator {
         self.generate_block_statement(&func.body);
 
         // function epilogue
-        self.emit(Instruction::Mov {
-            src: Operand::Immediate(0),
-            dst: Operand::Register(r!("rax")),
-        });
         self.emit(Instruction::Pop(Operand::Register(r!("rbp"))));
         self.emit(Instruction::Ret);
 
