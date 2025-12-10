@@ -3,9 +3,9 @@ use std::sync::LazyLock;
 use regex::Regex;
 
 use crate::{
-    error::{CompilerError, IntoCompilerError},
+    error::IntoCompilerError,
     grammar::*,
-    lexer_base::LexError,
+    lexer_base::{LexError, error::LexResult},
 };
 
 static WORD_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^\w+").unwrap());
@@ -91,7 +91,7 @@ impl<'a> Lexer<'a> {
 }
 
 impl<'a> Iterator for Lexer<'a> {
-    type Item = Result<Token<'a>, CompilerError<LexError>>;
+    type Item = LexResult<Token<'a>>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.trim_ascii_start();
@@ -169,11 +169,8 @@ mod tests {
     use super::*;
     use crate::t;
 
-    fn test_lexer_success(
-        input: &str,
-        expected_kinds: Vec<TokenType<'static>>,
-    ) -> Result<(), CompilerError<LexError>> {
-        let tokens: Vec<Token> = Lexer::new(input).collect::<Result<Vec<_>, _>>()?;
+    fn test_lexer_success(input: &str, expected_kinds: Vec<TokenType<'static>>) -> LexResult<()> {
+        let tokens: Vec<Token> = Lexer::new(input).collect::<LexResult<_>>()?;
         let kinds: Vec<TokenType> = tokens.iter().map(|t| t.kind.clone()).collect();
         assert_eq!(kinds, expected_kinds);
         Ok(())
@@ -182,7 +179,7 @@ mod tests {
     fn test_lexer_fail(input: &str) {
         assert!(
             Lexer::new(input)
-                .collect::<Result<Vec<Token>, CompilerError<LexError>>>()
+                .collect::<LexResult<Vec<Token>>>()
                 .is_err()
         )
     }
@@ -208,8 +205,7 @@ mod tests {
 
     #[test]
     fn test_lexer_error_unexpected_character() {
-        let result: Result<Vec<Token>, CompilerError<LexError>> =
-            Lexer::new("int main() { return @; }").collect();
+        let result: LexResult<Vec<Token>> = Lexer::new("int main() { return @; }").collect();
         assert!(result.is_err());
         let err = result.unwrap_err();
         assert_eq!(err.error, LexError::UnexpectedCharacter('@'));
@@ -218,7 +214,7 @@ mod tests {
 
     #[test]
     fn test_lexer_error_unexpected_character_at_start() {
-        let result: Result<Vec<Token>, CompilerError<LexError>> = Lexer::new("@invalid").collect();
+        let result: LexResult<Vec<Token>> = Lexer::new("@invalid").collect();
         assert!(result.is_err());
         let err = result.unwrap_err();
         assert_eq!(err.error, LexError::UnexpectedCharacter('@'));
@@ -227,7 +223,7 @@ mod tests {
 
     #[test]
     fn test_lexer_error_invalid_token_format() {
-        let result: Result<Vec<Token>, CompilerError<LexError>> = Lexer::new("123abc").collect();
+        let result: LexResult<Vec<Token>> = Lexer::new("123abc").collect();
         assert!(result.is_err());
         let err = result.unwrap_err();
         assert_eq!(
@@ -245,8 +241,7 @@ mod tests {
 
     #[test]
     fn test_lexer_error_multiple_special_chars() {
-        let result: Result<Vec<Token>, CompilerError<LexError>> =
-            Lexer::new("int main() #$").collect();
+        let result: LexResult<Vec<Token>> = Lexer::new("int main() #$").collect();
         assert!(result.is_err());
         let err = result.unwrap_err();
         // '#' is now a valid punctuator, so '$' is the unexpected character
@@ -256,7 +251,7 @@ mod tests {
 
     #[test]
     fn test_lexer_error_position_after_whitespace() {
-        let result: Result<Vec<Token>, CompilerError<LexError>> = Lexer::new("int   @").collect();
+        let result: LexResult<Vec<Token>> = Lexer::new("int   @").collect();
         assert!(result.is_err());
         let err = result.unwrap_err();
         assert_eq!(err.error, LexError::UnexpectedCharacter('@'));

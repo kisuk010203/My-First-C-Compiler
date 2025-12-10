@@ -13,4 +13,4 @@ pub enum LexError {
 
 impl IntoCompilerError for LexError {}
 
-pub type CompilerLexError = CompilerError<LexError>;
+pub(super) type LexResult<T> = Result<T, CompilerError<LexError>>;
