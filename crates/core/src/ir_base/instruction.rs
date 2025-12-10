@@ -24,8 +24,9 @@ pub enum Instruction {
     Not { dst: Operand },
 
     // Comparison
-    // Note: In AT&T syntax, `cmpl left, right` computes `right - left` and sets flags.
-    // The Cmp instruction only sets flags and doesn't have a true destination.
+    // Note: In AT&T syntax, the format is `cmpl left, right` which computes `right - left`
+    // and sets CPU flags accordingly. The Cmp instruction only sets flags and doesn't
+    // have a true destination operand (unlike arithmetic operations).
     Cmp { left: Operand, right: Operand },
 
     // Jumps
