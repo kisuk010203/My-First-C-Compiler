@@ -3,6 +3,30 @@
 **Writing a C Compiler(Build a real programming language from scratch)** - Nora Sandler
 We will do this in <span style="color:#B94700">_Rust_</span>
 
+## Usage
+### Basic Usage
+```bash
+# Compile to assembly (creates input.s)
+cargo run -- input.c
+
+# Specify output file
+cargo run -- input.c -o output.s
+cargo run -- input.c --output output.s
+```
+
+### Different Compilation Stages
+```bash
+# Stop after lexing (print tokens)
+cargo run input.c --lex-only
+
+# Stop after parsing (print AST)
+cargo run input.c --parse-only
+
+# Stop after IR generation (print intermediate representation)
+cargo run input.c --ir-only
+```
+
+
 ## Part 0 : A High-Level Overview
 `Compiler` : Program that translates code from one programming language to another
 
