@@ -87,6 +87,10 @@ impl CodeGenerator {
         }
     }
 
+    /// Generate code for an expression.
+    ///
+    /// # Calling Convention
+    /// Expression results are always returned in the `rax` register.
     fn generate_expression(&mut self, expr: &Expression<'_>) {
         match expr {
             Expression::Constant(val) => self.emit(Instruction::Mov {
