@@ -127,7 +127,7 @@ impl<'a> Iterator for Lexer<'a> {
 
             // constants?
             if let Some(m) = INTEGER_REGEX.find(m.as_str()) {
-                let constant = m.as_str().parse::<i32>().unwrap();
+                let constant = m.as_str().parse::<i64>().unwrap();
                 let len = m.len();
                 let end_idx = self.idx + len;
                 self.advance(len);

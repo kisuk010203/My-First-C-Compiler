@@ -4,7 +4,7 @@ use crate::grammar::operator::*;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expression<'a> {
-    Constant(i32),
+    Constant(i64),
     Variable(Cow<'a, str>),
     Grouped(Box<Expression<'a>>),
     Binary {
