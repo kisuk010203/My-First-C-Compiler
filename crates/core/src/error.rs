@@ -1,9 +1,11 @@
 use std::{error::Error, fmt};
 
+use thiserror::Error;
+
 use crate::grammar::Span;
 
 /// A compiler error with location information
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Error)]
 pub struct CompilerError<E>
 where
     E: IntoCompilerError,
@@ -43,17 +45,6 @@ where
             "{} [at {}:{}]",
             self.error, self.span.line, self.span.column
         )
-    }
-}
-
-impl<E> Error for CompilerError<E> where E: IntoCompilerError {}
-
-impl<E> PartialEq for CompilerError<E>
-where
-    E: IntoCompilerError,
-{
-    fn eq(&self, other: &Self) -> bool {
-        self.error == other.error && self.span == other.span
     }
 }
 
