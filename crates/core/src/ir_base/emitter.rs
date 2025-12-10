@@ -39,8 +39,6 @@ impl Emitter {
     }
 }
 
-// ... your existing Emitter code ...
-
 #[cfg(test)]
 mod tests {
     use super::*;
