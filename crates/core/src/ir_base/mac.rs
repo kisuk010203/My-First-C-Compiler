@@ -25,4 +25,28 @@ macro_rules! r {
     ("rbp") => {
         $crate::ir_base::reg::PhyRegister::RBP
     };
+    ("r8") => {
+        $crate::ir_base::Register::R8
+    };
+    ("r9") => {
+        $crate::ir_base::Register::R9
+    };
+    ("r10") => {
+        $crate::ir_base::Register::R10
+    };
+    ("r11") => {
+        $crate::ir_base::Register::R11
+    };
+    ("r12") => {
+        $crate::ir_base::Register::R12
+    };
+    ("r13") => {
+        $crate::ir_base::Register::R13
+    };
+    ("r14") => {
+        $crate::ir_base::Register::R14
+    };
+    ("r15") => {
+        $crate::ir_base::Register::R15
+    };
 }
