@@ -14,7 +14,7 @@ pub enum Instruction {
     Add { src: Operand, dst: Operand },
     Sub { src: Operand, dst: Operand },
     IMul { src: Operand, dst: Operand },
-    IDiv { src: Operand, dst: Operand },
+    IDiv { divisor: Operand },
     Neg { dst: Operand },
 
     // Logical operations
@@ -53,8 +53,8 @@ impl Instruction {
             Instruction::IMul { src, dst } => {
                 format!("imull {}, {}", src, dst)
             }
-            Instruction::IDiv { src, dst } => {
-                format!("idivl {}, {}", src, dst)
+            Instruction::IDiv { divisor } => {
+                format!("idivl {}", divisor)
             }
             Instruction::Neg { dst } => {
                 format!("negl {}", dst)
@@ -63,7 +63,6 @@ impl Instruction {
                 format!("andl {}, {}", src, dst)
             }
             Instruction::Or { src, dst } => {
-                // Using the size suffix from the Size field
                 format!("orl {}, {}", src, dst)
             }
             Instruction::Xor { src, dst } => {
@@ -103,9 +102,21 @@ pub struct IRFuncDef<'a> {
     pub instructions: Vec<Instruction>,
 }
 impl<'a> IRFuncDef<'a> {
+    fn platfrom_mangle_name(name: &str) -> String {
+        // On macos, symbol names should be prefixed with `_`
+        #[cfg(target_os = "macos")]
+        {
+            format!("_{}", name)
+        }
+        // On other platforms, no prefix is needed
+        #[cfg(not(target_os = "macos"))]
+        {
+            name.to_string()
+        }
+    }
     pub fn new(name: Cow<'a, str>, is_global: bool, instructions: &[Instruction]) -> Self {
         Self {
-            name: Cow::Owned(format!("_{}", name)),
+            name: Cow::Owned(Self::platfrom_mangle_name(&name)),
             is_global,
             instructions: instructions.to_vec(),
         }
