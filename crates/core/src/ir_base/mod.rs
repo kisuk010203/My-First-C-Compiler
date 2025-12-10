@@ -7,19 +7,29 @@ pub mod reg;
 pub use crate::ir_base::{emitter::*, instruction::*, operand::*};
 
 /// Complete program in IR
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct IRProgram<'a> {
     pub functions: Vec<IRFuncDef<'a>>,
 }
+
 impl<'a> IRProgram<'a> {
     pub fn new() -> Self {
-        Self {
-            functions: Vec::new(),
-        }
+        Self::default()
     }
 
     pub fn add_function(&mut self, func: IRFuncDef<'a>) {
         self.functions.push(func);
+    }
+}
+
+impl<'a> FromIterator<IRFuncDef<'a>> for IRProgram<'a> {
+    fn from_iter<I>(iter: I) -> Self
+    where
+        I: IntoIterator<Item = IRFuncDef<'a>>,
+    {
+        Self {
+            functions: iter.into_iter().collect(),
+        }
     }
 }
 
@@ -35,7 +45,7 @@ mod tests {
             Instruction::Ret,
         ];
 
-        let func = IRFuncDef::new("test".into(), true, &instructions);
+        let func = IRFuncDef::new_global("test".into(), instructions);
 
         assert_eq!(func.name, "_test");
         assert!(func.is_global);
@@ -44,7 +54,7 @@ mod tests {
 
     #[test]
     fn test_ir_func_def_non_global() {
-        let func = IRFuncDef::new("helper".into(), false, &vec![]);
+        let func = IRFuncDef::new_local("helper".into(), vec![]);
 
         assert_eq!(func.name, "_helper");
         assert!(!func.is_global);
@@ -56,8 +66,8 @@ mod tests {
         let mut program = IRProgram::new();
         assert_eq!(program.functions.len(), 0);
 
-        let func1 = IRFuncDef::new("main".into(), true, &vec![]);
-        let func2 = IRFuncDef::new("helper".into(), false, &vec![]);
+        let func1 = IRFuncDef::new_global("main".into(), vec![]);
+        let func2 = IRFuncDef::new_local("helper".into(), vec![]);
 
         program.add_function(func1);
         program.add_function(func2);

@@ -101,8 +101,9 @@ pub struct IRFuncDef<'a> {
     pub is_global: bool,
     pub instructions: Vec<Instruction>,
 }
+
 impl<'a> IRFuncDef<'a> {
-    fn platfrom_mangle_name(name: &str) -> String {
+    fn platform_mangle_name(name: &str) -> String {
         // On macos, symbol names should be prefixed with `_`
         #[cfg(target_os = "macos")]
         {
@@ -114,11 +115,19 @@ impl<'a> IRFuncDef<'a> {
             name.to_string()
         }
     }
-    pub fn new(name: Cow<'a, str>, is_global: bool, instructions: &[Instruction]) -> Self {
+    pub fn new_global(name: Cow<'a, str>, instructions: Vec<Instruction>) -> Self {
         Self {
-            name: Cow::Owned(Self::platfrom_mangle_name(&name)),
-            is_global,
-            instructions: instructions.to_vec(),
+            name: Cow::Owned(Self::platform_mangle_name(&name)),
+            is_global: true,
+            instructions,
+        }
+    }
+
+    pub fn new_local(name: Cow<'a, str>, instructions: Vec<Instruction>) -> Self {
+        Self {
+            name: Cow::Owned(Self::platform_mangle_name(&name)),
+            is_global: false,
+            instructions,
         }
     }
 }

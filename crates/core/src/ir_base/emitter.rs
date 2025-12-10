@@ -1,41 +1,43 @@
-use std::fmt::Write;
+use std::io;
 
 use crate::ir_base::{
     IRProgram,
     instruction::{IRFuncDef, Instruction},
 };
 
-pub struct Emitter {
-    pub output: String,
+pub struct Emitter<'a, W: io::Write> {
+    pub output: &'a mut W,
 }
-impl Emitter {
-    pub fn new() -> Self {
-        Self {
-            output: String::new(),
-        }
+
+impl<'a, W: io::Write> Emitter<'a, W> {
+    pub fn new(output: &'a mut W) -> Self {
+        Self { output }
     }
 
-    pub fn emit_program(&mut self, program: &IRProgram) -> String {
+    pub fn emit_program(mut self, program: &IRProgram) -> io::Result<&'a mut W> {
         for func in &program.functions {
-            self.emit_function(func);
-            self.output.push('\n');
+            self.emit_function(func)?;
+            self.output.write_all(b"\n")?;
         }
-        std::mem::take(&mut self.output)
+
+        Ok(self.output)
     }
 
-    pub fn emit_function(&mut self, func: &IRFuncDef) {
+    pub fn emit_function(&mut self, func: &IRFuncDef) -> io::Result<()> {
         if func.is_global {
-            writeln!(self.output, "    .global {}", func.name).unwrap();
+            writeln!(self.output, "    .global {}", func.name)?;
         }
-        writeln!(self.output, "{}:", func.name).unwrap();
+        writeln!(self.output, "{}:", func.name)?;
 
         for inst in &func.instructions {
-            self.emit_instruction(inst);
+            self.emit_instruction(inst)?;
         }
+
+        Ok(())
     }
 
-    fn emit_instruction(&mut self, inst: &Instruction) {
-        writeln!(self.output, "    {}", inst.as_assembly_inline()).unwrap();
+    fn emit_instruction(&mut self, inst: &Instruction) -> io::Result<()> {
+        writeln!(self.output, "    {}", inst.as_assembly_inline())
     }
 }
 
@@ -47,15 +49,22 @@ mod tests {
     fn normalize_whitespace(s: &str) -> String {
         s.split_whitespace().collect::<Vec<_>>().join(" ")
     }
+
     fn contains_normalized(haystack: &str, needle: &str) -> bool {
         normalize_whitespace(haystack).contains(&normalize_whitespace(needle))
+    }
+
+    fn emit_program_as_string(program: &IRProgram) -> String {
+        let mut buffer = Vec::new();
+        let emitter = Emitter::new(&mut buffer);
+        emitter.emit_program(&program).unwrap();
+        String::from_utf8(buffer).unwrap()
     }
 
     #[test]
     fn test_emit_empty_program() {
         let program = IRProgram::new();
-        let mut emitter = Emitter::new();
-        let assembly = emitter.emit_program(&program);
+        let assembly = emit_program_as_string(&program);
 
         // Should be empty or just whitespace
         assert!(assembly.trim().is_empty());
@@ -77,12 +86,11 @@ mod tests {
             Instruction::Ret,
         ];
 
-        let func = IRFuncDef::new("main".into(), true, &instructions);
+        let func = IRFuncDef::new_global("main".into(), instructions);
         let mut program = IRProgram::new();
         program.add_function(func);
 
-        let mut emitter = Emitter::new();
-        let assembly = emitter.emit_program(&program);
+        let assembly = emit_program_as_string(&program);
         println!("{}", assembly);
 
         assert!(contains_normalized(&assembly, ".global _main"));
@@ -96,12 +104,11 @@ mod tests {
 
     #[test]
     fn test_emit_non_global_function() {
-        let func = IRFuncDef::new("helper".into(), false, &vec![Instruction::Ret]);
+        let func = IRFuncDef::new_local("helper".into(), vec![Instruction::Ret]);
         let mut program = IRProgram::new();
         program.add_function(func);
 
-        let mut emitter = Emitter::new();
-        let assembly = emitter.emit_program(&program);
+        let assembly = emit_program_as_string(&program);
 
         assert!(contains_normalized(&assembly, "_helper:"));
         assert!(!contains_normalized(&assembly, ".global _helper"));
@@ -129,12 +136,11 @@ mod tests {
             },
         ];
 
-        let func = IRFuncDef::new("sizes".into(), true, &instructions);
+        let func = IRFuncDef::new_global("sizes".into(), instructions);
         let mut program = IRProgram::new();
         program.add_function(func);
 
-        let mut emitter = Emitter::new();
-        let assembly = emitter.emit_program(&program);
+        let assembly = emit_program_as_string(&program);
 
         assert!(contains_normalized(&assembly, "movq    $1, %rax"));
         assert!(contains_normalized(&assembly, "movq    $2, %rbx"));
@@ -159,12 +165,11 @@ mod tests {
             },
         ];
 
-        let func = IRFuncDef::new("arith".into(), true, &instructions);
+        let func = IRFuncDef::new_global("arith".into(), instructions);
         let mut program = IRProgram::new();
         program.add_function(func);
 
-        let mut emitter = Emitter::new();
-        let assembly = emitter.emit_program(&program);
+        let assembly = emit_program_as_string(&program);
 
         assert!(contains_normalized(&assembly, "addl    $5, %rax"));
         assert!(contains_normalized(&assembly, "subl    %rcx, %rax"));
@@ -182,12 +187,11 @@ mod tests {
             },
         ];
 
-        let func = IRFuncDef::new("unary".into(), true, &instructions);
+        let func = IRFuncDef::new_global("unary".into(), instructions);
         let mut program = IRProgram::new();
         program.add_function(func);
 
-        let mut emitter = Emitter::new();
-        let assembly = emitter.emit_program(&program);
+        let assembly = emit_program_as_string(&program);
 
         assert!(contains_normalized(&assembly, "negl    %rax"));
         assert!(contains_normalized(&assembly, "notl    %rbx"));
@@ -200,12 +204,11 @@ mod tests {
             Instruction::Call("_helper".to_string()),
         ];
 
-        let func = IRFuncDef::new("caller".into(), true, &instructions);
+        let func = IRFuncDef::new_global("caller".into(), instructions);
         let mut program = IRProgram::new();
         program.add_function(func);
 
-        let mut emitter = Emitter::new();
-        let assembly = emitter.emit_program(&program);
+        let assembly = emit_program_as_string(&program);
 
         assert!(contains_normalized(&assembly, "call    printf"));
         assert!(contains_normalized(&assembly, "call    _helper"));
@@ -213,16 +216,15 @@ mod tests {
 
     #[test]
     fn test_emit_multiple_functions() {
-        let func1 = IRFuncDef::new("main".into(), true, &vec![Instruction::Ret]);
+        let func1 = IRFuncDef::new_global("main".into(), vec![Instruction::Ret]);
 
-        let func2 = IRFuncDef::new("helper".into(), false, &vec![Instruction::Ret]);
+        let func2 = IRFuncDef::new_local("helper".into(), vec![Instruction::Ret]);
 
         let mut program = IRProgram::new();
         program.add_function(func1);
         program.add_function(func2);
 
-        let mut emitter = Emitter::new();
-        let assembly = emitter.emit_program(&program);
+        let assembly = emit_program_as_string(&program);
         // Check both functions are present
         assert!(contains_normalized(&assembly, "_main:"));
         assert!(contains_normalized(&assembly, "_helper:"));
@@ -253,12 +255,11 @@ mod tests {
             },
         ];
 
-        let func = IRFuncDef::new("mem".into(), true, &instructions);
+        let func = IRFuncDef::new_global("mem".into(), instructions);
         let mut program = IRProgram::new();
         program.add_function(func);
 
-        let mut emitter = Emitter::new();
-        let assembly = emitter.emit_program(&program);
+        let assembly = emit_program_as_string(&program);
 
         assert!(contains_normalized(&assembly, "movq    -8(%rbp), %rax"));
         assert!(contains_normalized(&assembly, "movq    %rcx, 0(%rsp)"));

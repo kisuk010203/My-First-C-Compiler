@@ -1,9 +1,10 @@
 use crate::{
-    grammar::{Expression, Program, Statement, UnaryOp},
+    grammar::{BlockStmt, Expression, Program, Statement, UnaryOp},
     ir_base::{self, IRFuncDef, IRProgram, Instruction, Operand},
     r,
 };
 
+#[derive(Default)]
 pub struct CodeGenerator {
     current_function: Vec<Instruction>,
     #[allow(dead_code)]
@@ -12,10 +13,7 @@ pub struct CodeGenerator {
 
 impl CodeGenerator {
     pub fn new() -> Self {
-        Self {
-            current_function: Vec::new(),
-            label_counter: 0,
-        }
+        Self::default()
     }
 
     #[allow(dead_code)]
@@ -29,23 +27,18 @@ impl CodeGenerator {
         self.current_function.push(inst);
     }
 
-    pub fn generate<'a>(&mut self, program: &'a Program<'a>) -> IRProgram<'a> {
-        let mut ir_program = IRProgram::new();
-
-        for func in &program.functions {
-            let ir_func = self.generate_function(func);
-            ir_program.add_function(ir_func);
-        }
-
-        ir_program
+    pub fn generate<'a>(mut self, program: &'a Program<'a>) -> IRProgram<'a> {
+        program
+            .functions
+            .iter()
+            .map(|f| self.generate_function(f))
+            .collect::<IRProgram<'a>>()
     }
 
     fn generate_function<'a>(
         &mut self,
         func: &'a crate::grammar::FuncDef<'a>,
     ) -> ir_base::IRFuncDef<'a> {
-        self.current_function.clear();
-
         // function prologue
         self.emit(Instruction::Push(Operand::Register(r!("rbp"))));
         self.emit(Instruction::Mov {
@@ -54,16 +47,16 @@ impl CodeGenerator {
         });
 
         // generate body
-        self.generate_statement(Statement::Block(func.body.clone()));
+        self.generate_block_statement(&func.body);
 
         // function epilogue
         self.emit(Instruction::Pop(Operand::Register(r!("rbp"))));
         self.emit(Instruction::Ret);
 
-        IRFuncDef::new(func.name.clone(), true, &self.current_function)
+        IRFuncDef::new_global(func.name.clone(), self.current_function.drain(..).collect())
     }
 
-    fn generate_statement(&mut self, stmt: Statement<'_>) {
+    fn generate_statement<'a>(&mut self, stmt: &Statement<'a>) {
         match stmt {
             Statement::Return(ret) => {
                 self.generate_expression(&ret.expr);
@@ -71,7 +64,7 @@ impl CodeGenerator {
                 self.emit(Instruction::Ret);
             }
             Statement::Block(block) => {
-                for s in block.statements {
+                for s in &block.statements {
                     self.generate_statement(s);
                 }
             }
@@ -87,7 +80,13 @@ impl CodeGenerator {
         }
     }
 
-    fn generate_expression(&mut self, expr: &Expression<'_>) {
+    fn generate_block_statement<'a>(&mut self, block: &BlockStmt<'a>) {
+        for s in &block.statements {
+            self.generate_statement(s);
+        }
+    }
+
+    fn generate_expression<'a>(&mut self, expr: &Expression<'a>) {
         match expr {
             Expression::Constant(val) => self.emit(Instruction::Mov {
                 src: Operand::Immediate(*val),

@@ -89,7 +89,7 @@ fn main() {
         return;
     }
 
-    let mut codegen = CodeGenerator::new();
+    let codegen = CodeGenerator::new();
     let ir_program = codegen.generate(&ast);
 
     if cli.ir_only {
@@ -98,8 +98,12 @@ fn main() {
         return;
     }
 
-    let mut emitter = Emitter::new();
-    let assembly = emitter.emit_program(&ir_program);
+    let mut assembly_buffer = Vec::new();
+    let emitter = Emitter::new(&mut assembly_buffer);
+    let assembly = {
+        emitter.emit_program(&ir_program).unwrap();
+        String::from_utf8(assembly_buffer).unwrap()
+    };
 
     let output_path = cli.output.unwrap_or_else(|| cli.input.with_extension("s"));
     if let Err(err) = fs::write(&output_path, assembly) {
