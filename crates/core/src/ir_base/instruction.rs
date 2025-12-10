@@ -24,7 +24,9 @@ pub enum Instruction {
     Not { dst: Operand },
 
     // Comparison
-    Cmp { src: Operand, dst: Operand },
+    // Note: In AT&T syntax, `cmpl left, right` computes `right - left` and sets flags.
+    // The Cmp instruction only sets flags and doesn't have a true destination.
+    Cmp { left: Operand, right: Operand },
 
     // Jumps
 
@@ -71,8 +73,8 @@ impl Instruction {
             Instruction::Not { dst } => {
                 format!("notl {}", dst)
             }
-            Instruction::Cmp { src, dst } => {
-                format!("cmpl {}, {}", src, dst)
+            Instruction::Cmp { left, right } => {
+                format!("cmpl {}, {}", left, right)
             }
             Instruction::Call(function) => {
                 format!("call {}", function)
