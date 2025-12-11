@@ -24,7 +24,7 @@ pub enum Instruction {
     Not { dst: Operand },
 
     // Comparison
-    Cmp { src: Operand, dst: Operand },
+    Cmp { left: Operand, right: Operand },
 
     // Jumps
 
@@ -71,8 +71,8 @@ impl Instruction {
             Instruction::Not { dst } => {
                 format!("notl {}", dst)
             }
-            Instruction::Cmp { src, dst } => {
-                format!("cmpl {}, {}", src, dst)
+            Instruction::Cmp { left, right } => {
+                format!("cmpl {}, {}", left, right)
             }
             Instruction::Call(function) => {
                 format!("call {}", function)
